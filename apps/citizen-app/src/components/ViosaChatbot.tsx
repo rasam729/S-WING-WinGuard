@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { mockIssues, getIssuesNearLocation, getIssueStats, calculateSafetyScore } from '../store/issuesStore';
+import { generateRouteOptions, getRouteSummary, RouteOption } from '../utils/enhancedSafeRouteCalculator';
 
 interface Message {
   id: string;
@@ -6,6 +8,7 @@ interface Message {
   sender: 'user' | 'viosa';
   timestamp: Date;
   suggestions?: string[];
+  routes?: RouteOption[];
 }
 
 interface ViosaChatbotProps {
@@ -13,25 +16,28 @@ interface ViosaChatbotProps {
   onClose: () => void;
   userLocation?: [number, number];
   nearbyReports?: any[];
+  onRouteSelect?: (route: RouteOption) => void;
 }
 
-const ViosaChatbot: React.FC<ViosaChatbotProps> = ({ isOpen, onClose, userLocation, nearbyReports }) => {
+const ViosaChatbot: React.FC<ViosaChatbotProps> = ({ isOpen, onClose, userLocation, nearbyReports, onRouteSelect }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi! I'm Viosa, your AI safety assistant for Bengaluru. How can I help you stay safe today?",
+      text: "Hi! I'm Viosa, your AI safety assistant for Bengaluru. I have access to real-time data on road hazards, safety statistics, and can help you find the safest routes. How can I help you today?",
       sender: 'viosa',
       timestamp: new Date(),
       suggestions: [
         'Find safe route',
-        'Report an issue',
-        'Safety tips',
-        'Nearby alerts'
+        'Show nearby hazards',
+        'Safety statistics',
+        'Emergency help'
       ]
     }
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [destinationInput, setDestinationInput] = useState('');
+  const [awaitingDestination, setAwaitingDestination] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,143 +48,225 @@ const ViosaChatbot: React.FC<ViosaChatbotProps> = ({ isOpen, onClose, userLocati
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const generateAIResponse = async (userMessage: string): Promise<string> => {
+  const generateAIResponse = async (userMessage: string): Promise<{ text: string; routes?: RouteOption[] }> => {
     const lowerMessage = userMessage.toLowerCase();
+    const stats = getIssueStats();
+
+    // Route finding with destination
+    if (awaitingDestination || lowerMessage.includes('route') || lowerMessage.includes('navigate') || lowerMessage.includes('direction')) {
+      if (!userLocation) {
+        return {
+          text: `I need your current location to calculate routes. Please enable location services and click the "My Location" button on the map first! 📍`
+        };
+      }
+
+      // Check if message contains coordinates or location
+      const coordMatch = userMessage.match(/(\d+\.\d+)[,\s]+(\d+\.\d+)/);
+      if (coordMatch) {
+        const destLat = parseFloat(coordMatch[1]);
+        const destLng = parseFloat(coordMatch[2]);
+        
+        const routes = generateRouteOptions(
+          { lat: userLocation[0], lng: userLocation[1] },
+          { lat: destLat, lng: destLng }
+        );
+
+        return {
+          text: `Perfect! I've calculated 3 route options for you from your current location to (${destLat.toFixed(4)}, ${destLng.toFixed(4)}):
+
+${routes.map((route, idx) => `**${idx + 1}. ${route.name}** ${route.color === '#10b981' ? '🟢' : route.color === '#f59e0b' ? '🟠' : '🔵'}
+${getRouteSummary(route)}
+`).join('\n')}
+
+Click on any route below to view it on the map! The routes avoid ${stats.critical} critical hazards including potholes and broken streetlights.`,
+          routes
+        };
+      }
+
+      setAwaitingDestination(true);
+      return {
+        text: `Great! I can calculate the safest route for you. 🗺️
+
+Please provide your destination in one of these formats:
+• Coordinates: "12.9716, 77.5946"
+• Or click on the map to set destination
+• Or describe the location: "MG Road", "Koramangala"
+
+Current location: ${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}
+Area safety score: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100`
+      };
+    }
+
+    // Statistics and dashboard data
+    if (lowerMessage.includes('stat') || lowerMessage.includes('data') || lowerMessage.includes('dashboard') || lowerMessage.includes('report')) {
+      const nearbyIssues = userLocation ? getIssuesNearLocation({ lat: userLocation[0], lng: userLocation[1] }, 5) : [];
+      const activeNearby = nearbyIssues.filter(i => i.status !== 'resolved');
+      
+      return {
+        text: `📊 **Bengaluru Safety Dashboard**
+
+**City-wide Statistics:**
+• Total Issues: ${stats.total}
+• Critical: ${stats.critical} 🔴
+• In Progress: ${stats.inProgress} 🔵
+• Resolved: ${stats.resolved} 🟢
+
+**Issue Breakdown:**
+• Potholes: ${stats.potholes}
+• Broken Streetlights: ${stats.streetlights}
+• Police Booths: ${stats.policeBooths}
+
+${userLocation ? `**Your Area (5km radius):**
+• Total Issues: ${nearbyIssues.length}
+• Active Issues: ${activeNearby.length}
+• Safety Score: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
+
+${activeNearby.length > 0 ? `⚠️ Top concerns near you:
+${activeNearby.slice(0, 3).map((issue, idx) => `${idx + 1}. ${issue.type.replace('_', ' ')} - ${issue.description}`).join('\n')}` : '✅ No active issues in your immediate area!'}` : ''}
+
+Would you like me to find a safe route avoiding these hazards?`
+      };
+    }
+
+    // Nearby hazards
+    if (lowerMessage.includes('nearby') || lowerMessage.includes('alert') || lowerMessage.includes('around') || lowerMessage.includes('hazard')) {
+      if (!userLocation) {
+        return {
+          text: `Please enable location services to see nearby hazards! 📍`
+        };
+      }
+
+      const nearbyIssues = getIssuesNearLocation({ lat: userLocation[0], lng: userLocation[1] }, 2);
+      const activeIssues = nearbyIssues.filter(i => i.status !== 'resolved');
+      const criticalIssues = activeIssues.filter(i => i.status === 'critical');
+      
+      if (activeIssues.length === 0) {
+        return {
+          text: `🎉 **Great news!** No active hazards within 2km of your location!
+
+Your area safety score: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
+
+The roads are clear and safe for travel. Have a safe journey! 🚗`
+        };
+      }
+
+      return {
+        text: `⚠️ **Hazards Near You** (within 2km)
+
+**Summary:**
+• Total: ${activeIssues.length} active issues
+• Critical: ${criticalIssues.length} 🔴
+• In Progress: ${activeIssues.filter(i => i.status === 'in_progress').length} 🔵
+
+**Details:**
+${activeIssues.slice(0, 5).map((issue, idx) => {
+  const dist = Math.round(calculateDistance({ lat: userLocation[0], lng: userLocation[1] }, { lat: issue.latitude, lng: issue.longitude }) * 1000);
+  const statusEmoji = issue.status === 'critical' ? '🔴' : '🔵';
+  return `${idx + 1}. ${statusEmoji} **${issue.type.replace('_', ' ').toUpperCase()}** (${dist}m away)
+   ${issue.description}
+   Severity: ${issue.severity}/10`;
+}).join('\n\n')}
+
+${activeIssues.length > 5 ? `\n...and ${activeIssues.length - 5} more issues.` : ''}
+
+💡 **Recommendation:** Use "Safe Route" mode when navigating to avoid these hazards!
+
+Would you like me to calculate a safe route for you?`
+      };
+    }
 
     // Safety tips
     if (lowerMessage.includes('safe') && (lowerMessage.includes('tip') || lowerMessage.includes('advice'))) {
-      return `Here are some safety tips for Bengaluru:
+      const hour = new Date().getHours();
+      const isNight = hour >= 20 || hour < 6;
+      
+      return {
+        text: `🛡️ **Safety Tips for Bengaluru** ${isNight ? '(Night Travel)' : ''}
 
-🌙 **Night Travel**: Stick to well-lit main roads like MG Road, Brigade Road
-🚗 **Transportation**: Use verified cabs (Uber/Ola) with live tracking
-👥 **Stay Connected**: Share your location with family/friends
-📱 **Emergency**: Keep 100 (Police), 108 (Ambulance) on speed dial
-🏃 **Awareness**: Stay alert in crowded areas like KR Market, Majestic
+${isNight ? `**🌙 Night Safety:**
+• Stick to well-lit main roads (MG Road, Brigade Road, Indiranagar)
+• Avoid areas with broken streetlights (${stats.streetlights} reported)
+• Use verified cabs with live tracking
+• Share your location with family/friends` : `**☀️ Day Safety:**
+• Watch for potholes (${stats.potholes} active)
+• Stay alert in heavy traffic areas
+• Use designated pedestrian crossings`}
 
-Would you like a safe route to your destination?`;
-    }
+**📱 Emergency Contacts:**
+• Police: 100
+• Ambulance: 108
+• Women Helpline: 1091
 
-    // Route finding
-    if (lowerMessage.includes('route') || lowerMessage.includes('navigate') || lowerMessage.includes('direction')) {
-      const safetyScore = nearbyReports ? Math.max(50, 100 - nearbyReports.length * 5) : 75;
-      return `I can help you find the safest route! 🗺️
+**🗺️ Route Planning:**
+• Always use "Safe Route" mode
+• Check real-time hazard updates
+• Avoid ${stats.critical} critical hazard zones
 
-Current area safety score: ${safetyScore}/100
+Current area safety: ${userLocation ? `${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100` : 'Enable location to check'}
 
-To get started:
-1. Enter your destination in the search bar
-2. Toggle "Safe Route" mode
-3. I'll calculate the safest path avoiding:
-   - Reported potholes
-   - Dark areas with broken streetlights
-   - High-crime zones
-
-Where would you like to go?`;
-    }
-
-    // Report issue
-    if (lowerMessage.includes('report') || lowerMessage.includes('issue') || lowerMessage.includes('problem')) {
-      return `I can help you report a safety issue! 🚨
-
-Common issues in Bengaluru:
-• **Potholes**: Especially during monsoon season
-• **Broken Streetlights**: Report for faster repairs
-• **Dark Alleys**: Help improve lighting
-• **Road Damage**: Cracks, debris, etc.
-
-Click the red "Report Issue" button on the map, or tell me what you'd like to report!`;
-    }
-
-    // Nearby alerts
-    if (lowerMessage.includes('nearby') || lowerMessage.includes('alert') || lowerMessage.includes('around')) {
-      const reportCount = nearbyReports?.length || 0;
-      if (reportCount === 0) {
-        return `Good news! 🎉 There are no active safety issues reported within 5km of your location in Bengaluru. The area appears safe!`;
-      }
-      return `⚠️ Found ${reportCount} active issue${reportCount > 1 ? 's' : ''} within 5km:
-
-${nearbyReports?.slice(0, 3).map((r: any, i: number) => 
-  `${i + 1}. **${r.category}** - ${r.description || 'No description'} (${r.status})`
-).join('\n')}
-
-${reportCount > 3 ? `\n...and ${reportCount - 3} more. Check the map for details.` : ''}
-
-Would you like me to suggest a safer route?`;
-    }
-
-    // Area information
-    if (lowerMessage.includes('area') || lowerMessage.includes('location') || lowerMessage.includes('where')) {
-      return `📍 You're in Bengaluru, Karnataka!
-
-Popular safe areas:
-• **Koramangala**: Well-lit, good infrastructure
-• **Indiranagar**: Active police presence
-• **Whitefield**: Tech hub, well-maintained
-• **MG Road**: Central, always busy and safe
-
-Areas needing caution:
-• Avoid isolated areas after 10 PM
-• Be careful in crowded markets
-• Stay on main roads when possible
-
-Need specific area information?`;
+Need a safe route to your destination?`
+      };
     }
 
     // Emergency
-    if (lowerMessage.includes('emergency') || lowerMessage.includes('help') || lowerMessage.includes('danger')) {
-      return `🚨 **EMERGENCY CONTACTS**
+    if (lowerMessage.includes('emergency') || lowerMessage.includes('help') || lowerMessage.includes('danger') || lowerMessage.includes('sos')) {
+      return {
+        text: `🚨 **EMERGENCY ASSISTANCE**
 
-**Police**: 100
-**Ambulance**: 108
-**Fire**: 101
-**Women Helpline**: 1091
-**Bengaluru Police Control**: 080-22943225
+**Immediate Help:**
+📞 Police: **100**
+🚑 Ambulance: **108**
+🚒 Fire: **101**
+👩 Women Helpline: **1091**
+🏥 Bengaluru Police: **080-22943225**
 
-**Your location**: ${userLocation ? `${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}` : 'Unknown'}
+${userLocation ? `**Your Location:**
+📍 ${userLocation[0].toFixed(6)}, ${userLocation[1].toFixed(6)}
+Share this with emergency services!` : '📍 Enable location to share with emergency services'}
 
-Stay calm and call the appropriate number. I'm here to help!
+**Stay Calm:**
+1. Call the appropriate emergency number
+2. Share your location
+3. Stay on the line
+4. Follow dispatcher instructions
 
-Are you safe now?`;
+Are you safe now? Do you need me to guide you to the nearest police station or hospital?`
+      };
     }
 
-    // Weather/time based advice
-    const hour = new Date().getHours();
-    if (lowerMessage.includes('now') || lowerMessage.includes('current')) {
-      if (hour >= 20 || hour < 6) {
-        return `🌙 It's nighttime in Bengaluru (${hour}:00).
+    // Default intelligent response
+    const safetyScore = userLocation ? Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1)) : null;
+    
+    return {
+      text: `I'm here to help with comprehensive safety information! 🛡️
 
-**Safety recommendations**:
-• Use well-lit main roads
-• Share your live location
-• Prefer verified transportation
-• Stay in groups if possible
-• Keep emergency contacts ready
+**What I can do:**
 
-Current area status: ${nearbyReports && nearbyReports.length > 0 ? 'Some issues reported' : 'No active issues'}
+🗺️ **Smart Navigation**
+• Calculate 3 route options (Safest/Balanced/Fastest)
+• Real-time hazard avoidance
+• Safety scores for each route
 
-Need a safe route home?`;
-      } else {
-        return `☀️ Good ${hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'}!
+📊 **Live Data Access**
+• ${stats.total} tracked issues across Bengaluru
+• ${stats.critical} critical hazards to avoid
+• Real-time status updates
 
-Bengaluru is generally safe during daytime. Current conditions:
-• Traffic: Moderate to heavy
-• Safety: Good visibility
-• Infrastructure: ${nearbyReports && nearbyReports.length > 0 ? `${nearbyReports.length} issues reported nearby` : 'All clear'}
+⚠️ **Hazard Information**
+• ${stats.potholes} potholes
+• ${stats.streetlights} broken streetlights
+• Detailed severity ratings
 
-How can I assist your journey today?`;
-      }
-    }
+🚨 **Emergency Support**
+• Quick access to emergency contacts
+• Location sharing
+• Safety recommendations
 
-    // Default response with context
-    return `I'm here to help with:
+${safetyScore !== null ? `\n📍 **Your Current Area:**
+Safety Score: ${safetyScore}/100 ${safetyScore >= 80 ? '✅ Safe' : safetyScore >= 60 ? '⚠️ Moderate' : '🔴 Caution'}` : ''}
 
-🗺️ **Safe Navigation**: Find the safest routes in Bengaluru
-🚨 **Report Issues**: Potholes, broken lights, safety concerns
-📊 **Area Safety**: Check safety scores for any location
-💡 **Safety Tips**: Best practices for Bengaluru
-🚑 **Emergency Help**: Quick access to emergency services
-
-What would you like to know?`;
+What would you like to know?`
+    };
   };
 
   const handleSendMessage = async (text?: string) => {
@@ -197,24 +285,56 @@ What would you like to know?`;
     setIsTyping(true);
 
     // Simulate AI thinking delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     // Generate AI response
-    const aiResponse = await generateAIResponse(messageText);
+    const response = await generateAIResponse(messageText);
     
     const viosaMessage: Message = {
       id: (Date.now() + 1).toString(),
-      text: aiResponse,
+      text: response.text,
       sender: 'viosa',
       timestamp: new Date(),
+      routes: response.routes,
     };
     
     setMessages(prev => [...prev, viosaMessage]);
     setIsTyping(false);
+    setAwaitingDestination(false);
+  };
+
+  const handleRouteClick = (route: RouteOption) => {
+    if (onRouteSelect) {
+      onRouteSelect(route);
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        text: `Perfect! I've loaded the **${route.name}** on your map. You can see the route highlighted in ${route.color === '#10b981' ? 'green 🟢' : route.color === '#f59e0b' ? 'orange 🟠' : 'blue 🔵'}. Follow the route to avoid ${route.hazards.totalIssues} hazards. Safe travels! 🚗`,
+        sender: 'viosa',
+        timestamp: new Date(),
+      }]);
+    }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
     handleSendMessage(suggestion);
+  };
+
+  // Helper function to calculate distance
+  const calculateDistance = (
+    point1: { lat: number; lng: number },
+    point2: { lat: number; lng: number }
+  ): number => {
+    const R = 6371;
+    const dLat = ((point2.lat - point1.lat) * Math.PI) / 180;
+    const dLon = ((point2.lng - point1.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((point1.lat * Math.PI) / 180) *
+        Math.cos((point2.lat * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   };
 
   if (!isOpen) return null;
@@ -261,6 +381,34 @@ What would you like to know?`;
                 <p className={`text-xs mt-2 ${message.sender === 'user' ? 'text-white/70' : 'text-on-surface-variant'}`}>
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
+                
+                {/* Route Options */}
+                {message.routes && message.routes.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {message.routes.map((route) => (
+                      <button
+                        key={route.id}
+                        onClick={() => handleRouteClick(route)}
+                        className="w-full text-left p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all border border-white/20 hover:border-white/40"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-bold text-sm">{route.name}</span>
+                          <span 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: route.color }}
+                          ></span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>📍 {route.distance} km</div>
+                          <div>⏱️ {route.estimatedTime} min</div>
+                          <div>🛡️ {route.safetyScore}/100</div>
+                          <div>⚠️ {route.hazards.totalIssues} hazards</div>
+                        </div>
+                        <div className="mt-2 text-xs opacity-80">{route.recommendation}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 
                 {/* Suggestions */}
                 {message.suggestions && (
