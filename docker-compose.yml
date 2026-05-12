@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: winguard-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./shared/mockData.json:/docker-entrypoint-initdb.d/mockData.json
+    environment:
+      MONGO_INITDB_DATABASE: winguard
+    networks:
+      - winguard-network
+    restart: unless-stopped
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: winguard-server
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongodb:27017/winguard
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
+      COORDINATE_CENTER_LAT: ${COORDINATE_CENTER_LAT:-40.7128}
+      COORDINATE_CENTER_LNG: ${COORDINATE_CENTER_LNG:--74.0060}
+      OPERATIONAL_RADIUS: ${OPERATIONAL_RADIUS:-5000}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - ./server/uploads:/app/uploads
+    depends_on:
+      - mongodb
+    networks:
+      - winguard-network
+    restart: unless-stopped
+
+  citizen-app:
+    build:
+      context: ./apps/citizen-app
+      dockerfile: Dockerfile
+    container_name: winguard-citizen-app
+    ports:
+      - "5173:80"
+    environment:
+      VITE_API_URL: http://localhost:3000
+      VITE_WS_URL: ws://localhost:3000
+    networks:
+      - winguard-network
+    restart: unless-stopped
+
+  official-dashboard:
+    build:
+      context: ./apps/official-dashboard
+      dockerfile: Dockerfile
+    container_name: winguard-official-dashboard
+    ports:
+      - "5174:80"
+    environment:
+      VITE_API_URL: http://localhost:3000
+      VITE_WS_URL: ws://localhost:3000
+    networks:
+      - winguard-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+
+networks:
+  winguard-network:
+    driver: bridge
