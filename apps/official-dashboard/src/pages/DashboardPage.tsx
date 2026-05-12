@@ -174,17 +174,15 @@ export default function DashboardPage() {
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col py-6 h-screen w-64 bg-white border-r border-gray-200 fixed left-0 top-0 z-50">
         <div className="px-6 mb-8">
-          <div className="flex items-center gap-2">
-            <svg className="w-8 h-8 text-teal-600" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
-            </svg>
-            <span className="text-xl font-bold">
-              <span className="text-teal-600">Win</span>
-              <span className="text-orange-600">Guard</span>
-            </span>
+          <div className="flex items-center gap-2 mb-6">
+            <img 
+              src="/WinGuard_Logo.png" 
+              alt="WinGuard Logo" 
+              className="h-10 w-auto"
+            />
           </div>
           <div className="mt-6 p-3 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-sm">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 text-white flex items-center justify-center font-bold text-sm">
               A
             </div>
             <div>

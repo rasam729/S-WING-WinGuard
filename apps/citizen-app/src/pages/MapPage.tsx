@@ -271,14 +271,15 @@ const MapPage: React.FC = () => {
       <header className="absolute top-0 left-0 right-0 z-[1000] bg-white/80 backdrop-blur-xl shadow-lg border-b border-gray-200">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="material-symbols-outlined text-white text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                shield
-              </span>
-            </div>
+            <img 
+              src="/WinGuard_Logo.png" 
+              alt="WinGuard Logo" 
+              className="h-12 w-auto drop-shadow-lg"
+            />
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
-                WinGuard
+              <h1 className="text-2xl font-bold">
+                <span className="bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent">Win</span>
+                <span className="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Guard</span>
               </h1>
               <p className="text-xs text-gray-500 font-medium">
                 Welcome, {user?.fullName || 'User'}

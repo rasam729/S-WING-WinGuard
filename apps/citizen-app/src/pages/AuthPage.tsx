@@ -67,11 +67,12 @@ const AuthPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Logo and Header */}
           <div className="text-center mb-8 animate-fade-in">
-            <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-cyan-500 via-teal-500 to-orange-500 rounded-3xl shadow-2xl mb-6 transform hover:scale-105 transition-transform relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 to-orange-400 rounded-3xl blur-xl opacity-50 animate-pulse"></div>
-              <span className="material-symbols-outlined text-white text-5xl relative z-10" style={{ fontVariationSettings: "'FILL' 1" }}>
-                shield
-              </span>
+            <div className="inline-flex items-center justify-center mb-6 transform hover:scale-105 transition-transform">
+              <img 
+                src="/WinGuard_Logo.png" 
+                alt="WinGuard Logo" 
+                className="h-24 w-auto drop-shadow-2xl"
+              />
             </div>
             <h1 className="text-5xl font-black mb-3 tracking-tight">
               <span className="bg-gradient-to-r from-cyan-500 via-teal-500 to-cyan-600 bg-clip-text text-transparent">Win</span>
