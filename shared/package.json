@@ -1,0 +1,15 @@
+{
+  "name": "@winguard/shared",
+  "version": "1.0.0",
+  "description": "Shared utilities and constants for WinGuard platform",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint ."
+  },
+  "keywords": ["winguard", "shared", "utilities"],
+  "author": "",
+  "license": "ISC"
+}

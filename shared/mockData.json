@@ -1,0 +1,251 @@
+{
+  "coordinateCenter": {
+    "lat": 40.7128,
+    "lng": -74.006
+  },
+  "operationalRadius": 5000,
+  "infrastructure": [
+    {
+      "type": "police_booth",
+      "location": { "lat": 40.7128, "lng": -74.006 },
+      "status": "functional",
+      "metadata": { "name": "Central Police Station" }
+    },
+    {
+      "type": "police_booth",
+      "location": { "lat": 40.7158, "lng": -74.0095 },
+      "status": "functional",
+      "metadata": { "name": "North Precinct" }
+    },
+    {
+      "type": "police_booth",
+      "location": { "lat": 40.7098, "lng": -74.0025 },
+      "status": "functional",
+      "metadata": { "name": "South Precinct" }
+    },
+    {
+      "type": "hospital",
+      "location": { "lat": 40.7145, "lng": -74.0075 },
+      "status": "functional",
+      "metadata": { "name": "City General Hospital" }
+    },
+    {
+      "type": "hospital",
+      "location": { "lat": 40.7105, "lng": -74.0045 },
+      "status": "functional",
+      "metadata": { "name": "Emergency Medical Center" }
+    },
+    {
+      "type": "streetlight",
+      "location": { "lat": 40.7130, "lng": -74.0065 },
+      "status": "functional",
+      "metadata": { "brightness": 1200 }
+    },
+    {
+      "type": "streetlight",
+      "location": { "lat": 40.7135, "lng": -74.0070 },
+      "status": "functional",
+      "metadata": { "brightness": 1100 }
+    },
+    {
+      "type": "streetlight",
+      "location": { "lat": 40.7125, "lng": -74.0055 },
+      "status": "broken",
+      "metadata": { "brightness": 0 }
+    },
+    {
+      "type": "streetlight",
+      "location": { "lat": 40.7140, "lng": -74.0080 },
+      "status": "functional",
+      "metadata": { "brightness": 1300 }
+    },
+    {
+      "type": "streetlight",
+      "location": { "lat": 40.7120, "lng": -74.0050 },
+      "status": "functional",
+      "metadata": { "brightness": 1150 }
+    },
+    {
+      "type": "streetlight",
+      "location": { "lat": 40.7150, "lng": -74.0090 },
+      "status": "functional",
+      "metadata": { "brightness": 1250 }
+    },
+    {
+      "type": "streetlight",
+      "location": { "lat": 40.7115, "lng": -74.0040 },
+      "status": "broken",
+      "metadata": { "brightness": 0 }
+    },
+    {
+      "type": "streetlight",
+      "location": { "lat": 40.7155, "lng": -74.0085 },
+      "status": "functional",
+      "metadata": { "brightness": 1180 }
+    },
+    {
+      "type": "streetlight",
+      "location": { "lat": 40.7110, "lng": -74.0035 },
+      "status": "functional",
+      "metadata": { "brightness": 1220 }
+    },
+    {
+      "type": "streetlight",
+      "location": { "lat": 40.7160, "lng": -74.0100 },
+      "status": "functional",
+      "metadata": { "brightness": 1280 }
+    },
+    {
+      "type": "pothole",
+      "location": { "lat": 40.7122, "lng": -74.0058 },
+      "status": "broken",
+      "metadata": {}
+    },
+    {
+      "type": "pothole",
+      "location": { "lat": 40.7138, "lng": -74.0072 },
+      "status": "broken",
+      "metadata": {}
+    },
+    {
+      "type": "pothole",
+      "location": { "lat": 40.7118, "lng": -74.0048 },
+      "status": "broken",
+      "metadata": {}
+    },
+    {
+      "type": "pothole",
+      "location": { "lat": 40.7148, "lng": -74.0088 },
+      "status": "broken",
+      "metadata": {}
+    },
+    {
+      "type": "pothole",
+      "location": { "lat": 40.7112, "lng": -74.0038 },
+      "status": "broken",
+      "metadata": {}
+    }
+  ],
+  "darkSpots": [
+    {
+      "lat": 40.7125,
+      "lng": -74.0055,
+      "intensity": 0.8,
+      "radius": 150
+    },
+    {
+      "lat": 40.7115,
+      "lng": -74.0040,
+      "intensity": 0.9,
+      "radius": 180
+    },
+    {
+      "lat": 40.7142,
+      "lng": -74.0078,
+      "intensity": 0.6,
+      "radius": 120
+    },
+    {
+      "lat": 40.7108,
+      "lng": -74.0032,
+      "intensity": 0.75,
+      "radius": 160
+    },
+    {
+      "lat": 40.7152,
+      "lng": -74.0092,
+      "intensity": 0.7,
+      "radius": 140
+    }
+  ],
+  "crimeZones": [
+    {
+      "lat": 40.7118,
+      "lng": -74.0048,
+      "intensity": 0.85,
+      "radius": 200
+    },
+    {
+      "lat": 40.7138,
+      "lng": -74.0072,
+      "intensity": 0.65,
+      "radius": 180
+    },
+    {
+      "lat": 40.7105,
+      "lng": -74.0028,
+      "intensity": 0.75,
+      "radius": 220
+    }
+  ],
+  "safetyIssues": [
+    {
+      "issueType": "pothole",
+      "description": "Large pothole on Main Street causing traffic hazard",
+      "location": { "lat": 40.7122, "lng": -74.0058 },
+      "severity": {
+        "userInput": 7,
+        "calculated": 68
+      },
+      "status": "reported",
+      "reportedAt": "2024-01-15T10:30:00Z"
+    },
+    {
+      "issueType": "streetlight",
+      "description": "Broken streetlight on Park Avenue",
+      "location": { "lat": 40.7125, "lng": -74.0055 },
+      "severity": {
+        "userInput": 8,
+        "calculated": 76
+      },
+      "status": "reported",
+      "reportedAt": "2024-01-14T22:15:00Z"
+    },
+    {
+      "issueType": "crime",
+      "description": "Suspicious activity reported near subway station",
+      "location": { "lat": 40.7118, "lng": -74.0048 },
+      "severity": {
+        "userInput": 9,
+        "calculated": 88
+      },
+      "status": "reported",
+      "reportedAt": "2024-01-16T01:45:00Z"
+    },
+    {
+      "issueType": "pothole",
+      "description": "Multiple potholes on residential street",
+      "location": { "lat": 40.7138, "lng": -74.0072 },
+      "severity": {
+        "userInput": 6,
+        "calculated": 58
+      },
+      "status": "resolved",
+      "reportedAt": "2024-01-10T14:20:00Z",
+      "resolvedAt": "2024-01-13T09:00:00Z"
+    },
+    {
+      "issueType": "other",
+      "description": "Graffiti on public property",
+      "location": { "lat": 40.7115, "lng": -74.0040 },
+      "severity": {
+        "userInput": 4,
+        "calculated": 42
+      },
+      "status": "reported",
+      "reportedAt": "2024-01-15T16:00:00Z"
+    }
+  ],
+  "users": [
+    {
+      "username": "citizen@test.com",
+      "role": "citizen",
+      "passwordHash": "$2b$10$placeholder_hash_for_citizen123"
+    },
+    {
+      "username": "official@test.com",
+      "role": "official",
+      "passwordHash": "$2b$10$placeholder_hash_for_official123"
+    }
+  ]
+}
