@@ -1,31 +1,68 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
-import { Icon } from 'leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
 import { useAuthStore } from '../store/authStore';
 import 'leaflet/dist/leaflet.css';
 
-// Custom marker icons
-const policeIcon = new Icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23006876"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>'),
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32]
-});
+// Custom marker icons with glowing effect
+const createGlowingIcon = (icon: string, status: 'critical' | 'in_progress' | 'resolved') => {
+  const glowColor = status === 'critical' ? '#ef4444' : status === 'in_progress' ? '#3b82f6' : '#10b981';
+  const bgColor = status === 'critical' ? '#dc2626' : status === 'in_progress' ? '#2563eb' : '#059669';
+  
+  return L.divIcon({
+    className: 'custom-marker',
+    html: `
+      <div style="position: relative;">
+        <div style="
+          position: absolute;
+          width: 50px;
+          height: 50px;
+          background: ${glowColor};
+          border-radius: 50%;
+          opacity: 0.4;
+          animation: pulse 2s infinite;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+        "></div>
+        <div style="
+          position: relative;
+          background: ${bgColor};
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 20px ${glowColor};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 20px;
+          z-index: 1;
+        ">${icon}</div>
+      </div>
+      <style>
+        @keyframes pulse {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
+          50% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+        }
+      </style>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+};
 
-const streetlightIcon = new Icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2300658f"><circle cx="12" cy="12" r="10"/></svg>'),
-  iconSize: [24, 24],
-  iconAnchor: [12, 24],
-  popupAnchor: [0, -24]
-});
-
-const issueIcon = new Icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23904d00"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>'),
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32]
-});
+interface Issue {
+  id: number;
+  type: 'pothole' | 'streetlight' | 'police_booth';
+  latitude: number;
+  longitude: number;
+  status: 'critical' | 'in_progress' | 'resolved';
+  description: string;
+  reportedAt: string;
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -37,6 +74,18 @@ export default function DashboardPage() {
     streetlights: 74
   });
 
+  const [issues, setIssues] = useState<Issue[]>([
+    { id: 1, type: 'pothole', latitude: 12.9759, longitude: 77.6061, status: 'critical', description: 'Severe pothole on MG Road', reportedAt: '2 hours ago' },
+    { id: 2, type: 'streetlight', latitude: 12.9716, longitude: 77.6412, status: 'critical', description: 'Broken streetlight in Indiranagar', reportedAt: '5 hours ago' },
+    { id: 3, type: 'pothole', latitude: 12.9350, longitude: 77.6200, status: 'in_progress', description: 'Pothole repair in Koramangala', reportedAt: '1 day ago' },
+    { id: 4, type: 'streetlight', latitude: 12.9550, longitude: 77.6100, status: 'resolved', description: 'Streetlight repaired in Whitefield', reportedAt: '3 days ago' },
+  ]);
+
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [simulationMode, setSimulationMode] = useState<'install' | null>(null);
+  const [installType, setInstallType] = useState<'streetlight' | 'police_booth' | null>(null);
+  const [clickedLocation, setClickedLocation] = useState<[number, number] | null>(null);
+
   // Default center (Bengaluru, India)
   const mapCenter: [number, number] = [12.9716, 77.5946];
   const mapZoom = 13;
@@ -45,6 +94,101 @@ export default function DashboardPage() {
     logout();
     navigate('/login');
   };
+
+  const handleStatusChange = async (issueId: number, newStatus: 'in_progress' | 'resolved') => {
+    const issue = issues.find(i => i.id === issueId);
+    
+    setIssues(issues.map(issue => 
+      issue.id === issueId ? { ...issue, status: newStatus } : issue
+    ));
+
+    // Send notification to citizen app
+    try {
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: 1,
+          message: `${issue?.description} - Status updated to ${newStatus === 'in_progress' ? 'In Progress' : 'Resolved'}`,
+          type: newStatus === 'resolved' ? 'success' : 'info'
+        })
+      });
+    } catch (error) {
+      console.error('Error sending notification:', error);
+    }
+  };
+
+  const handleInstallNew = (type: 'streetlight' | 'police_booth') => {
+    setSimulationMode('install');
+    setInstallType(type);
+    setClickedLocation(null);
+  };
+
+  const confirmInstallation = async () => {
+    if (clickedLocation && installType) {
+      const newIssue: Issue = {
+        id: Date.now(),
+        type: installType,
+        latitude: clickedLocation[0],
+        longitude: clickedLocation[1],
+        status: 'resolved',
+        description: `New ${installType === 'streetlight' ? 'streetlight' : 'police booth'} installed`,
+        reportedAt: 'Just now'
+      };
+      setIssues([...issues, newIssue]);
+      
+      // Send notification
+      try {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: 1,
+            message: `New ${installType === 'streetlight' ? 'streetlight' : 'police booth'} installed in your area`,
+            type: 'success'
+          })
+        });
+      } catch (error) {
+        console.error('Error sending notification:', error);
+      }
+      
+      setSimulationMode(null);
+      setInstallType(null);
+      setClickedLocation(null);
+    }
+  };
+
+  const cancelInstallation = () => {
+    setSimulationMode(null);
+    setInstallType(null);
+    setClickedLocation(null);
+  };
+
+  const MapClickHandler = () => {
+    useMapEvents({
+      click: (e: any) => {
+        if (simulationMode === 'install') {
+          setClickedLocation([e.latlng.lat, e.latlng.lng]);
+        }
+      },
+    });
+    return null;
+  };
+
+  const getIconForType = (type: string) => {
+    switch (type) {
+      case 'pothole':
+        return '⚠️';
+      case 'streetlight':
+        return '💡';
+      case 'police_booth':
+        return '🚔';
+      default:
+        return '📍';
+    }
+  };
+
+  const activeIssuesCount = issues.filter(i => i.status !== 'resolved').length;
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex overflow-hidden">
@@ -204,26 +348,87 @@ export default function DashboardPage() {
 
           {/* Digital Twin Map */}
           <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200">
-            <div className="p-5 border-b border-gray-200 flex items-center justify-between">
+            <div className="p-5 border-b border-gray-200 flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">Digital Twin Command Center</h3>
-                <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mt-1">Real-time City Monitoring</p>
+                <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mt-1">Real-time City Monitoring & Simulation</p>
               </div>
-              <div className="flex gap-2">
-                <button className="bg-[#edeeef] text-gray-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 border border-gray-300 hover:border-[#00658f]/50 transition-colors">
+              <div className="flex gap-2 flex-wrap">
+                {/* Installation Mode Buttons */}
+                <button 
+                  onClick={() => handleInstallNew('streetlight')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
+                    simulationMode === 'install' && installType === 'streetlight'
+                      ? 'bg-teal-600 text-white border-teal-600 shadow-lg'
+                      : 'bg-white text-teal-700 border-teal-300 hover:border-teal-600'
+                  }`}
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/>
+                    <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
                   </svg>
-                  Layers
+                  Install Streetlight
                 </button>
-                <button className="bg-[#edeeef] text-gray-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 border border-gray-300 hover:border-[#904d00]/50 transition-colors">
+                <button 
+                  onClick={() => handleInstallNew('police_booth')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
+                    simulationMode === 'install' && installType === 'police_booth'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-lg'
+                      : 'bg-white text-blue-700 border-blue-300 hover:border-blue-600'
+                  }`}
+                >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
                   </svg>
-                  Timeline
+                  Install Police Booth
                 </button>
+                {simulationMode === 'install' && (
+                  <button 
+                    onClick={cancelInstallation}
+                    className="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 bg-red-600 text-white hover:bg-red-700 transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                    Cancel
+                  </button>
+                )}
               </div>
             </div>
+            
+            {/* Installation Instructions */}
+            {simulationMode === 'install' && (
+              <div className="px-5 py-3 bg-gradient-to-r from-blue-50 to-teal-50 border-b border-blue-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center animate-pulse">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-900">
+                      Click on the map to place a new {installType === 'streetlight' ? 'streetlight' : 'police booth'}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {clickedLocation 
+                        ? `Selected location: ${clickedLocation[0].toFixed(4)}, ${clickedLocation[1].toFixed(4)}` 
+                        : 'No location selected yet'}
+                    </p>
+                  </div>
+                  {clickedLocation && (
+                    <button
+                      onClick={confirmInstallation}
+                      className="px-6 py-3 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700 transition-all shadow-lg flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                      </svg>
+                      Confirm Installation
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            
             <div className="h-[600px] relative">
               <MapContainer
                 center={mapCenter}
@@ -236,54 +441,154 @@ export default function DashboardPage() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 
-                {/* Sample Police Booth - Koramangala */}
-                <Marker position={[12.9350, 77.6200]} icon={policeIcon}>
-                  <Popup>
-                    <div className="text-sm">
-                      <p className="font-bold text-[#006876]">Police Outpost - Koramangala</p>
-                      <p className="text-xs text-gray-600">Radius: 500m • Status: Operational</p>
-                    </div>
-                  </Popup>
-                </Marker>
-                <Circle
-                  center={[12.9350, 77.6200]}
-                  radius={500}
-                  pathOptions={{ color: '#006876', fillColor: '#58e6ff', fillOpacity: 0.1 }}
-                />
+                <MapClickHandler />
                 
-                {/* Sample Streetlights - Indiranagar */}
-                <Marker position={[12.9716, 77.6412]} icon={streetlightIcon}>
-                  <Popup>
-                    <div className="text-sm">
-                      <p className="font-bold text-[#00658f]">Streetlight - Indiranagar</p>
-                      <p className="text-xs text-gray-600">Status: Online</p>
-                    </div>
-                  </Popup>
-                </Marker>
+                {/* Render all issues with glowing markers */}
+                {issues.map((issue) => (
+                  <Marker
+                    key={issue.id}
+                    position={[issue.latitude, issue.longitude]}
+                    icon={createGlowingIcon(getIconForType(issue.type), issue.status)}
+                  >
+                    <Popup>
+                      <div className="text-sm min-w-[250px]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-2xl">{getIconForType(issue.type)}</span>
+                          <div>
+                            <p className="font-bold text-gray-900 capitalize">{issue.type.replace('_', ' ')}</p>
+                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                              issue.status === 'critical' 
+                                ? 'bg-red-100 text-red-700'
+                                : issue.status === 'in_progress'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-green-100 text-green-700'
+                            }`}>
+                              {issue.status === 'critical' ? 'Critical' : issue.status === 'in_progress' ? 'In Progress' : 'Resolved'}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-gray-700 mb-2">{issue.description}</p>
+                        <p className="text-xs text-gray-500 mb-3">Reported {issue.reportedAt}</p>
+                        
+                        {/* Status Change Buttons */}
+                        {issue.status !== 'resolved' && (
+                          <div className="flex flex-col gap-2">
+                            {issue.status === 'critical' && (
+                              <button
+                                onClick={() => handleStatusChange(issue.id, 'in_progress')}
+                                className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                Start Fixing
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleStatusChange(issue.id, 'resolved')}
+                              className="w-full px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                              </svg>
+                              Mark as Resolved
+                            </button>
+                          </div>
+                        )}
+                        {issue.status === 'resolved' && (
+                          <div className="flex items-center gap-2 text-green-600">
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                            </svg>
+                            <span className="text-xs font-bold">Issue Resolved</span>
+                          </div>
+                        )}
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
                 
-                {/* Sample Issue - MG Road */}
-                <Marker position={[12.9759, 77.6061]} icon={issueIcon}>
-                  <Popup>
-                    <div className="text-sm">
-                      <p className="font-bold text-[#904d00]">Severe Pothole</p>
-                      <p className="text-xs text-gray-600">ID: #WG-9902 • Priority: Critical</p>
-                      <p className="text-xs text-gray-600 mt-1">MG Road, Bengaluru</p>
-                    </div>
-                  </Popup>
-                </Marker>
+                {/* Temporary marker for installation location */}
+                {clickedLocation && simulationMode === 'install' && (
+                  <Marker
+                    position={clickedLocation}
+                    icon={L.divIcon({
+                      className: 'custom-marker',
+                      html: `
+                        <div style="
+                          width: 40px;
+                          height: 40px;
+                          background: linear-gradient(135deg, #10b981, #059669);
+                          border-radius: 50%;
+                          border: 4px solid white;
+                          box-shadow: 0 4px 16px rgba(16, 185, 129, 0.6);
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          color: white;
+                          font-size: 24px;
+                          animation: bounce 1s infinite;
+                        ">
+                          ${installType === 'streetlight' ? '💡' : '🚔'}
+                        </div>
+                        <style>
+                          @keyframes bounce {
+                            0%, 100% { transform: translateY(0); }
+                            50% { transform: translateY(-10px); }
+                          }
+                        </style>
+                      `,
+                      iconSize: [40, 40],
+                      iconAnchor: [20, 20],
+                    })}
+                  >
+                    <Popup>
+                      <div className="text-sm">
+                        <p className="font-bold text-green-600">New Installation Location</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {installType === 'streetlight' ? 'Streetlight' : 'Police Booth'}
+                        </p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
               </MapContainer>
+              
+              {/* Map Legend */}
+              <div className="absolute top-6 right-6 bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-gray-200 p-4 z-[1000]">
+                <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Status Legend</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-600 shadow-lg"></div>
+                    <span className="text-xs font-medium text-gray-700">Critical</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-600 shadow-lg"></div>
+                    <span className="text-xs font-medium text-gray-700">In Progress</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-600 shadow-lg"></div>
+                    <span className="text-xs font-medium text-gray-700">Resolved</span>
+                  </div>
+                </div>
+              </div>
               
               {/* Map Overlay Stats */}
               <div className="absolute bottom-6 left-6 right-6 flex gap-4 justify-between items-end z-[1000] pointer-events-none">
-                <div className="bg-white/90 backdrop-blur-md px-5 py-3 rounded-xl flex items-center gap-6 shadow-lg border border-gray-200 pointer-events-auto">
+                <div className="bg-white/95 backdrop-blur-md px-5 py-3 rounded-xl flex items-center gap-6 shadow-lg border border-gray-200 pointer-events-auto">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-[#00658f] uppercase font-bold tracking-widest">Active Patrols</span>
-                    <span className="text-2xl font-semibold text-gray-900">14 Units</span>
+                    <span className="text-[10px] text-red-600 uppercase font-bold tracking-widest">Active Issues</span>
+                    <span className="text-2xl font-semibold text-gray-900">{activeIssuesCount}</span>
                   </div>
                   <div className="h-10 w-[1px] bg-gray-300"></div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-[#904d00] uppercase font-bold tracking-widest">Response Time</span>
-                    <span className="text-2xl font-semibold text-gray-900">4.2 min</span>
+                    <span className="text-[10px] text-green-600 uppercase font-bold tracking-widest">Resolved</span>
+                    <span className="text-2xl font-semibold text-gray-900">{issues.filter(i => i.status === 'resolved').length}</span>
+                  </div>
+                  <div className="h-10 w-[1px] bg-gray-300"></div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-teal-600 uppercase font-bold tracking-widest">Total</span>
+                    <span className="text-2xl font-semibold text-gray-900">{issues.length}</span>
                   </div>
                 </div>
               </div>
