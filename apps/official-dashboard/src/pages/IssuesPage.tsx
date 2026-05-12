@@ -1,82 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-
-interface Issue {
-  report_id: number;
-  user_id: number;
-  category: string;
-  severity: number;
-  description: string;
-  latitude: number;
-  longitude: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  photo_url?: string;
-  estimated_fix_date?: string;
-}
+import { useIssuesStore } from '../store/issuesStore';
 
 export default function IssuesPage() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
+  const { issues, updateIssueStatus } = useIssuesStore();
   
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchIssues();
-  }, []);
-
-  const fetchIssues = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('http://localhost:3000/api/reports');
-      const data = await response.json();
-      if (data.success) {
-        setIssues(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching issues:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleToggleResolved = async (issueId: number, currentStatus: string) => {
+  const handleToggleResolved = async (issueId: number, currentStatus: 'critical' | 'in_progress' | 'resolved') => {
     setUpdatingId(issueId);
     try {
-      const newStatus = currentStatus === 'Resolved' ? 'Pending' : 'Resolved';
+      const newStatus = currentStatus === 'resolved' ? 'critical' : 'resolved';
       
-      const response = await fetch(`http://localhost:3000/api/reports/${issueId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
+      updateIssueStatus(issueId, newStatus);
 
-      const data = await response.json();
-      
-      if (data.success) {
-        // Update local state
-        setIssues(issues.map(issue => 
-          issue.report_id === issueId 
-            ? { ...issue, status: newStatus }
-            : issue
-        ));
-
-        // Send notification to citizen app
-        if (newStatus === 'Resolved') {
-          await fetch('http://localhost:3000/api/notifications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user_id: issues.find(i => i.report_id === issueId)?.user_id,
-              message: `Your report about ${issues.find(i => i.report_id === issueId)?.category} has been resolved!`,
-              type: 'success'
-            })
-          });
-        }
+      // Send notification to citizen app
+      if (newStatus === 'resolved') {
+        const issue = issues.find(i => i.id === issueId);
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: 1,
+            message: `Your report about ${issue?.type} has been resolved!`,
+            type: 'success'
+          })
+        });
       }
     } catch (error) {
       console.error('Error updating issue:', error);
@@ -86,37 +38,23 @@ export default function IssuesPage() {
     }
   };
 
-  const handleUpdateStatus = async (issueId: number, newStatus: string) => {
+  const handleUpdateStatus = async (issueId: number, newStatus: 'critical' | 'in_progress' | 'resolved') => {
     setUpdatingId(issueId);
     try {
-      const response = await fetch(`http://localhost:3000/api/reports/${issueId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
+      updateIssueStatus(issueId, newStatus);
 
-      const data = await response.json();
-      
-      if (data.success) {
-        setIssues(issues.map(issue => 
-          issue.report_id === issueId 
-            ? { ...issue, status: newStatus }
-            : issue
-        ));
-
-        // Send notification
-        const issue = issues.find(i => i.report_id === issueId);
-        if (issue) {
-          await fetch('http://localhost:3000/api/notifications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user_id: issue.user_id,
-              message: `Your report about ${issue.category} status updated to: ${newStatus}`,
-              type: 'info'
-            })
-          });
-        }
+      // Send notification
+      const issue = issues.find(i => i.id === issueId);
+      if (issue) {
+        await fetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: 1,
+            message: `Your report about ${issue.type} status updated to: ${newStatus}`,
+            type: 'info'
+          })
+        });
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -135,6 +73,18 @@ export default function IssuesPage() {
     if (severity >= 8) return 'text-red-600 bg-red-100';
     if (severity >= 5) return 'text-orange-600 bg-orange-100';
     return 'text-yellow-600 bg-yellow-100';
+  };
+
+  const getStatusColor = (status: string) => {
+    if (status === 'resolved') return 'bg-green-100 text-green-700 border border-green-300';
+    if (status === 'in_progress') return 'bg-blue-100 text-blue-700 border border-blue-300';
+    return 'bg-red-100 text-red-700 border border-red-300';
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'resolved') return 'Resolved';
+    if (status === 'in_progress') return 'In Progress';
+    return 'Critical';
   };
 
   return (
@@ -217,7 +167,7 @@ export default function IssuesPage() {
                   <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
                 </svg>
                 <span className="text-sm font-bold text-orange-700">
-                  {issues.filter(i => i.status !== 'Resolved').length} Active Issues
+                  {issues.filter(i => i.status !== 'resolved').length} Active Issues
                 </span>
               </div>
             </div>
@@ -225,11 +175,7 @@ export default function IssuesPage() {
         </header>
 
         <div className="px-6 py-8">
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          ) : issues.length === 0 ? (
+          {issues.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-200">
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
@@ -241,9 +187,9 @@ export default function IssuesPage() {
             <div className="space-y-4">
               {issues.map((issue) => (
                 <div
-                  key={issue.report_id}
+                  key={issue.id}
                   className={`bg-white rounded-xl shadow-sm border-2 p-6 transition-all ${
-                    issue.status === 'Resolved' 
+                    issue.status === 'resolved' 
                       ? 'border-green-200 bg-green-50/30' 
                       : 'border-gray-200 hover:shadow-md'
                   }`}
@@ -266,15 +212,9 @@ export default function IssuesPage() {
                       <div className="flex items-start justify-between gap-4 mb-3">
                         <div>
                           <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-xl font-bold text-gray-900">{issue.category}</h3>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                              issue.status === 'Resolved' 
-                                ? 'bg-green-100 text-green-700 border border-green-300'
-                                : issue.status === 'In Progress'
-                                ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                                : 'bg-orange-100 text-orange-700 border border-orange-300'
-                            }`}>
-                              {issue.status}
+                            <h3 className="text-xl font-bold text-gray-900 capitalize">{issue.type.replace('_', ' ')}</h3>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(issue.status)}`}>
+                              {getStatusLabel(issue.status)}
                             </span>
                           </div>
                           <p className="text-gray-700 mb-3 leading-relaxed">{issue.description}</p>
@@ -290,44 +230,25 @@ export default function IssuesPage() {
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
                               </svg>
-                              <span className="font-medium">Reported {new Date(issue.created_at).toLocaleDateString()}</span>
+                              <span className="font-medium">Reported {issue.reportedAt}</span>
                             </span>
-                            {issue.estimated_fix_date && (
-                              <span className="flex items-center gap-1 text-blue-600">
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>
-                                </svg>
-                                <span className="font-bold">Est. Fix: {new Date(issue.estimated_fix_date).toLocaleDateString()}</span>
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
-
-                      {/* Photo Preview */}
-                      {issue.photo_url && (
-                        <div className="mb-4">
-                          <img
-                            src={issue.photo_url}
-                            alt="Issue"
-                            className="w-40 h-40 object-cover rounded-lg border-2 border-gray-200"
-                          />
-                        </div>
-                      )}
 
                       {/* Action Buttons */}
                       <div className="flex flex-wrap items-center gap-3">
                         {/* Toggle Resolved Button */}
                         <button
-                          onClick={() => handleToggleResolved(issue.report_id, issue.status)}
-                          disabled={updatingId === issue.report_id}
+                          onClick={() => handleToggleResolved(issue.id, issue.status)}
+                          disabled={updatingId === issue.id}
                           className={`px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
-                            issue.status === 'Resolved'
+                            issue.status === 'resolved'
                               ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-md'
                               : 'bg-green-600 text-white hover:bg-green-700 shadow-md'
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
-                          {updatingId === issue.report_id ? (
+                          {updatingId === issue.id ? (
                             <>
                               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                               <span>Updating...</span>
@@ -335,33 +256,36 @@ export default function IssuesPage() {
                           ) : (
                             <>
                               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                {issue.status === 'Resolved' ? (
+                                {issue.status === 'resolved' ? (
                                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                                 ) : (
                                   <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
                                 )}
                               </svg>
-                              <span>{issue.status === 'Resolved' ? 'Mark as Unresolved' : 'Mark as Resolved'}</span>
+                              <span>{issue.status === 'resolved' ? 'Mark as Unresolved' : 'Mark as Resolved'}</span>
                             </>
                           )}
                         </button>
 
                         {/* Status Update Dropdown */}
-                        {issue.status !== 'Resolved' && (
+                        {issue.status !== 'resolved' && (
                           <select
                             value={issue.status}
-                            onChange={(e) => handleUpdateStatus(issue.report_id, e.target.value)}
-                            disabled={updatingId === issue.report_id}
+                            onChange={(e) => handleUpdateStatus(issue.id, e.target.value as 'critical' | 'in_progress' | 'resolved')}
+                            disabled={updatingId === issue.id}
                             className="px-4 py-3 border-2 border-gray-300 rounded-xl font-bold text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-200 disabled:opacity-50"
                           >
-                            <option value="Pending">Pending</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Resolved">Resolved</option>
+                            <option value="critical">Critical</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
                           </select>
                         )}
 
                         {/* View on Map */}
-                        <button className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors flex items-center gap-2">
+                        <button 
+                          onClick={() => navigate('/')}
+                          className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors flex items-center gap-2"
+                        >
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                           </svg>

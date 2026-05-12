@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { useAuthStore } from '../store/authStore';
+import { useIssuesStore, Issue } from '../store/issuesStore';
 import 'leaflet/dist/leaflet.css';
 
 // Custom marker icons with glowing effect
@@ -54,33 +55,12 @@ const createGlowingIcon = (icon: string, status: 'critical' | 'in_progress' | 'r
   });
 };
 
-interface Issue {
-  id: number;
-  type: 'pothole' | 'streetlight' | 'police_booth';
-  latitude: number;
-  longitude: number;
-  status: 'critical' | 'in_progress' | 'resolved';
-  description: string;
-  reportedAt: string;
-}
-
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
-  const [stats] = useState({
-    totalActive: 124,
-    potholes: 42,
-    crimeReports: 8,
-    streetlights: 74
-  });
-
-  const [issues, setIssues] = useState<Issue[]>([
-    { id: 1, type: 'pothole', latitude: 12.9759, longitude: 77.6061, status: 'critical', description: 'Severe pothole on MG Road', reportedAt: '2 hours ago' },
-    { id: 2, type: 'streetlight', latitude: 12.9716, longitude: 77.6412, status: 'critical', description: 'Broken streetlight in Indiranagar', reportedAt: '5 hours ago' },
-    { id: 3, type: 'pothole', latitude: 12.9350, longitude: 77.6200, status: 'in_progress', description: 'Pothole repair in Koramangala', reportedAt: '1 day ago' },
-    { id: 4, type: 'streetlight', latitude: 12.9550, longitude: 77.6100, status: 'resolved', description: 'Streetlight repaired in Whitefield', reportedAt: '3 days ago' },
-  ]);
-
+  const { issues, updateIssueStatus, addIssue, getStats } = useIssuesStore();
+  const stats = getStats();
+  
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [simulationMode, setSimulationMode] = useState<'install' | null>(null);
   const [installType, setInstallType] = useState<'streetlight' | 'police_booth' | null>(null);
@@ -98,9 +78,7 @@ export default function DashboardPage() {
   const handleStatusChange = async (issueId: number, newStatus: 'in_progress' | 'resolved') => {
     const issue = issues.find(i => i.id === issueId);
     
-    setIssues(issues.map(issue => 
-      issue.id === issueId ? { ...issue, status: newStatus } : issue
-    ));
+    updateIssueStatus(issueId, newStatus);
 
     // Send notification to citizen app
     try {
@@ -118,12 +96,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleInstallNew = (type: 'streetlight' | 'police_booth') => {
-    setSimulationMode('install');
-    setInstallType(type);
-    setClickedLocation(null);
-  };
-
   const confirmInstallation = async () => {
     if (clickedLocation && installType) {
       const newIssue: Issue = {
@@ -133,9 +105,10 @@ export default function DashboardPage() {
         longitude: clickedLocation[1],
         status: 'resolved',
         description: `New ${installType === 'streetlight' ? 'streetlight' : 'police booth'} installed`,
-        reportedAt: 'Just now'
+        reportedAt: 'Just now',
+        severity: 0
       };
-      setIssues([...issues, newIssue]);
+      addIssue(newIssue);
       
       // Send notification
       try {
@@ -156,6 +129,12 @@ export default function DashboardPage() {
       setInstallType(null);
       setClickedLocation(null);
     }
+  };
+
+  const handleInstallNew = (type: 'streetlight' | 'police_booth') => {
+    setSimulationMode('install');
+    setInstallType(type);
+    setClickedLocation(null);
   };
 
   const cancelInstallation = () => {
@@ -188,7 +167,7 @@ export default function DashboardPage() {
     }
   };
 
-  const activeIssuesCount = issues.filter(i => i.status !== 'resolved').length;
+  const activeIssuesCount = stats.critical + stats.inProgress;
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex overflow-hidden">
@@ -308,10 +287,10 @@ export default function DashboardPage() {
           {/* Dashboard Stats */}
           <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-              <p className="text-gray-600 text-xs uppercase tracking-wider font-bold">Total Active</p>
+              <p className="text-gray-600 text-xs uppercase tracking-wider font-bold">Total Issues</p>
               <div className="flex items-end justify-between mt-2">
-                <h2 className="text-3xl font-bold text-teal-600">{stats.totalActive}</h2>
-                <span className="text-teal-600 font-bold text-sm">+12%</span>
+                <h2 className="text-3xl font-bold text-teal-600">{stats.total}</h2>
+                <span className="text-teal-600 font-bold text-sm">All</span>
               </div>
             </div>
             
@@ -326,9 +305,9 @@ export default function DashboardPage() {
             </div>
             
             <div className="bg-white p-5 rounded-xl shadow-sm border-l-4 border-red-500">
-              <p className="text-gray-600 text-xs uppercase tracking-wider font-bold">Crime Reports</p>
+              <p className="text-gray-600 text-xs uppercase tracking-wider font-bold">Critical</p>
               <div className="flex items-end justify-between mt-2">
-                <h2 className="text-3xl font-bold text-gray-900">{stats.crimeReports}</h2>
+                <h2 className="text-3xl font-bold text-gray-900">{stats.critical}</h2>
                 <svg className="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                 </svg>
@@ -583,12 +562,12 @@ export default function DashboardPage() {
                   <div className="h-10 w-[1px] bg-gray-300"></div>
                   <div className="flex flex-col">
                     <span className="text-[10px] text-green-600 uppercase font-bold tracking-widest">Resolved</span>
-                    <span className="text-2xl font-semibold text-gray-900">{issues.filter(i => i.status === 'resolved').length}</span>
+                    <span className="text-2xl font-semibold text-gray-900">{stats.resolved}</span>
                   </div>
                   <div className="h-10 w-[1px] bg-gray-300"></div>
                   <div className="flex flex-col">
                     <span className="text-[10px] text-teal-600 uppercase font-bold tracking-widest">Total</span>
-                    <span className="text-2xl font-semibold text-gray-900">{issues.length}</span>
+                    <span className="text-2xl font-semibold text-gray-900">{stats.total}</span>
                   </div>
                 </div>
               </div>
