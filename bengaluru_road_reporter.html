@@ -514,7 +514,7 @@ function extractExifWithLibrary(file, dataUrl) {
   document.getElementById('geo-status').style.display = 'block';
   
   // Create an image element for EXIF.js
-  const img = new Image();
+  const img = new Image();  
   img.onload = function() {
     EXIF.getData(img, function() {
       const lat = EXIF.getTag(this, 'GPSLatitude');
