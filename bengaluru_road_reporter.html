@@ -357,8 +357,12 @@ Loading...
 
 <script>
 // ===== CONFIGURATION =====
-const SUPABASE_URL = 'https://bpkcnjffxycccwjxnoaz.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwa2NuamZmeHljY2N3anhub2F6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MDMzNzEsImV4cCI6MjA5NDE3OTM3MX0.uB9a6NZhX2Npl8bFXbwQ9TfVAACre5f2y2zEkkcsZSE';
+// 🔧 UPDATE THESE WITH YOUR SUPABASE CREDENTIALS
+const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';  // e.g., 'https://xxxxx.supabase.co'
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';  // Your anon/public key
+
+// 🎥 DEMO MODE: Set to true to use localStorage (no backend needed for demo)
+const DEMO_MODE = true;
 
 const ISSUE_COLORS = {
   pothole: '#E24B4A',
@@ -416,6 +420,11 @@ let activeFilter = 'all';
 
 // ===== SUPABASE HELPER =====
 async function sbFetch(path, opts = {}) {
+  // 🎥 DEMO MODE: Use localStorage instead of Supabase
+  if (DEMO_MODE) {
+    return handleLocalStorage(path, opts);
+  }
+  
   const res = await fetch(SUPABASE_URL + path, {
     ...opts,
     headers: {
@@ -433,7 +442,35 @@ async function sbFetch(path, opts = {}) {
   return opts.returnText ? res.text() : res.json();
 }
 
+// ===== LOCAL STORAGE FALLBACK FOR DEMO =====
+function handleLocalStorage(path, opts) {
+  const storageKey = 'road_reports_demo';
+  
+  // GET request - retrieve reports
+  if (!opts.method || opts.method === 'GET') {
+    const stored = localStorage.getItem(storageKey);
+    return Promise.resolve(stored ? JSON.parse(stored) : []);
+  }
+  
+  // POST request - save new report
+  if (opts.method === 'POST') {
+    const stored = localStorage.getItem(storageKey);
+    const reports = stored ? JSON.parse(stored) : [];
+    const newReport = JSON.parse(opts.body);
+    newReport.id = Date.now(); // Generate unique ID
+    reports.unshift(newReport);
+    localStorage.setItem(storageKey, JSON.stringify(reports));
+    return Promise.resolve([newReport]);
+  }
+  
+  return Promise.resolve([]);
+}
+
 async function ensureTable() {
+  if (DEMO_MODE) {
+    console.log('🎥 DEMO MODE: Using localStorage');
+    return;
+  }
   try {
     await sbFetch('/rest/v1/road_reports?limit=1');
   } catch(e) {
@@ -629,6 +666,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ===== IMAGE UPLOAD =====
 async function uploadImage(file) {
+  // 🎥 DEMO MODE: Convert to base64 for local storage
+  if (DEMO_MODE) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+  
   const fname = 'reports/' + Date.now() + '_' + file.name.replace(/[^a-z0-9.]/gi, '_');
   const res = await fetch(SUPABASE_URL + '/storage/v1/object/road-images/' + fname, {
     method: 'POST',
@@ -901,6 +947,17 @@ async function loadDashboard() {
   try {
     const data = await sbFetch('/rest/v1/road_reports?order=created_at.desc&limit=200');
     allReports = Array.isArray(data) ? data : [];
+    
+    // 🎥 DEMO MODE: Merge with citizen reports for seamless demo
+    if (DEMO_MODE && citizenReports.length > 0) {
+      // Combine and deduplicate
+      const combined = [...allReports, ...citizenReports];
+      const unique = combined.filter((report, index, self) =>
+        index === self.findIndex((r) => r.id === report.id || 
+          (r.created_at === report.created_at && r.issue_type === report.issue_type))
+      );
+      allReports = unique;
+    }
   } catch(e) {
     allReports = citizenReports;
   }
