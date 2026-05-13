@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import * as ExifParser from 'exif-parser';
+import ExifParser from 'exif-parser';
 import { pool } from '../config/postgres';
 import jwt from 'jsonwebtoken';
 
