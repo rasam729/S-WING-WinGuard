@@ -10,6 +10,53 @@ export default function StatsPage() {
   const { issues, getStats } = useIssuesStore();
   const stats = getStats();
   
+  // Calculate Safety Score based on resolved vs unresolved issues
+  const calculateSafetyScore = (): number => {
+    if (stats.total === 0) return 100;
+    
+    const activeIssues = stats.critical + stats.inProgress;
+    const criticalWeight = 10; // Critical issues have 10x impact
+    const inProgressWeight = 5; // In-progress issues have 5x impact
+    
+    const weightedPenalty = (stats.critical * criticalWeight) + (stats.inProgress * inProgressWeight);
+    const maxPenalty = stats.total * criticalWeight; // Worst case: all critical
+    
+    const score = 100 - ((weightedPenalty / maxPenalty) * 100);
+    return Math.max(0, Math.min(100, Math.round(score)));
+  };
+  
+  // Calculate Crime Rate based on police booth and streetlight coverage
+  const calculateCrimeRate = (): number => {
+    const totalInfrastructure = stats.policeBooths + stats.streetlights + stats.hospitals;
+    const resolvedInfrastructure = issues.filter(i => 
+      (i.type === 'police_booth' || i.type === 'streetlight' || i.type === 'hospital') && 
+      i.status === 'resolved'
+    ).length;
+    
+    if (totalInfrastructure === 0) return 100; // High crime rate if no infrastructure
+    
+    const coverageRate = (resolvedInfrastructure / totalInfrastructure) * 100;
+    const crimeRate = 100 - coverageRate; // Inverse: more coverage = less crime
+    
+    return Math.max(0, Math.min(100, Math.round(crimeRate)));
+  };
+  
+  // Calculate Resolution Efficiency
+  const calculateResolutionEfficiency = (): number => {
+    if (stats.total === 0) return 0;
+    
+    const resolutionRate = (stats.resolved / stats.total) * 100;
+    const activeRate = ((stats.inProgress) / stats.total) * 100;
+    
+    // Efficiency considers both resolution and active work
+    const efficiency = (resolutionRate * 0.7) + (activeRate * 0.3);
+    return Math.round(efficiency);
+  };
+  
+  const safetyScore = calculateSafetyScore();
+  const crimeRate = calculateCrimeRate();
+  const resolutionEfficiency = calculateResolutionEfficiency();
+  
   // Generate time-series data for line chart (last 7 days)
   const generateTimeSeriesData = () => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -185,6 +232,93 @@ export default function StatsPage() {
               </div>
               <p className="text-sm font-bold text-gray-700">Critical</p>
               <p className="text-xs text-gray-500 mt-1">High priority</p>
+            </div>
+          </div>
+
+          {/* Safety & Crime Analytics */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Safety Score */}
+            <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-6 rounded-xl shadow-lg border-2 border-teal-200">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-bold text-teal-700 uppercase tracking-wider">Safety Score</p>
+                  <p className="text-xs text-teal-600 mt-1">Based on resolved issues</p>
+                </div>
+                <svg className="w-10 h-10 text-teal-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                </svg>
+              </div>
+              <div className="flex items-end gap-2 mb-4">
+                <span className="text-5xl font-bold text-teal-700">{safetyScore}</span>
+                <span className="text-2xl font-bold text-teal-600 mb-1">/100</span>
+              </div>
+              <div className="w-full h-3 bg-teal-200 rounded-full overflow-hidden mb-3">
+                <div 
+                  className="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full transition-all duration-500"
+                  style={{ width: `${safetyScore}%` }}
+                />
+              </div>
+              <div className="text-xs text-teal-700 space-y-1">
+                <p>• Critical issues: -{stats.critical * 10} points</p>
+                <p>• In Progress: -{stats.inProgress * 5} points</p>
+                <p>• Resolved: +{stats.resolved} bonus</p>
+              </div>
+            </div>
+
+            {/* Crime Rate */}
+            <div className="bg-gradient-to-br from-orange-50 to-red-50 p-6 rounded-xl shadow-lg border-2 border-orange-200">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-bold text-orange-700 uppercase tracking-wider">Crime Rate Index</p>
+                  <p className="text-xs text-orange-600 mt-1">Based on infrastructure coverage</p>
+                </div>
+                <svg className="w-10 h-10 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                </svg>
+              </div>
+              <div className="flex items-end gap-2 mb-4">
+                <span className="text-5xl font-bold text-orange-700">{crimeRate}</span>
+                <span className="text-2xl font-bold text-orange-600 mb-1">/100</span>
+              </div>
+              <div className="w-full h-3 bg-orange-200 rounded-full overflow-hidden mb-3">
+                <div 
+                  className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full transition-all duration-500"
+                  style={{ width: `${crimeRate}%` }}
+                />
+              </div>
+              <div className="text-xs text-orange-700 space-y-1">
+                <p>• Police Booths: {stats.policeBooths} units</p>
+                <p>• Streetlights: {stats.streetlights} units</p>
+                <p>• Hospitals: {stats.hospitals} units</p>
+              </div>
+            </div>
+
+            {/* Resolution Efficiency */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl shadow-lg border-2 border-blue-200">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-bold text-blue-700 uppercase tracking-wider">Resolution Efficiency</p>
+                  <p className="text-xs text-blue-600 mt-1">Overall performance metric</p>
+                </div>
+                <svg className="w-10 h-10 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                </svg>
+              </div>
+              <div className="flex items-end gap-2 mb-4">
+                <span className="text-5xl font-bold text-blue-700">{resolutionEfficiency}</span>
+                <span className="text-2xl font-bold text-blue-600 mb-1">%</span>
+              </div>
+              <div className="w-full h-3 bg-blue-200 rounded-full overflow-hidden mb-3">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                  style={{ width: `${resolutionEfficiency}%` }}
+                />
+              </div>
+              <div className="text-xs text-blue-700 space-y-1">
+                <p>• Resolution Rate: {stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}%</p>
+                <p>• Active Work: {stats.total > 0 ? Math.round((stats.inProgress / stats.total) * 100) : 0}%</p>
+                <p>• Pending: {stats.total > 0 ? Math.round((stats.critical / stats.total) * 100) : 0}%</p>
+              </div>
             </div>
           </div>
 
