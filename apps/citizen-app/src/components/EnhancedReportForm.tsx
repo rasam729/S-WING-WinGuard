@@ -142,8 +142,33 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
       if (hasGPS) {
         setAiAnalysis('📍 GPS coordinates extracted from photo!');
       } else {
-        setAiAnalysis('⚠️ No GPS data found in photo. Using current location.');
+        setAiAnalysis('⚠️ No GPS data found in photo. Use current location or enter coordinates manually.');
       }
+    }
+  };
+
+  const useCurrentLocation = () => {
+    if (navigator.geolocation) {
+      setAiAnalysis('📍 Getting your current location...');
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setFormData(prev => ({
+            ...prev,
+            latitude: lat,
+            longitude: lng
+          }));
+          setGpsCoordinates({ lat, lng });
+          setAiAnalysis('✅ Current location set successfully!');
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          setAiAnalysis('❌ Could not get location. Please enable location services or enter coordinates manually.');
+        }
+      );
+    } else {
+      setAiAnalysis('❌ Geolocation not supported. Please enter coordinates manually.');
     }
   };
 
@@ -440,33 +465,51 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
           </div>
 
           {/* Location */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                Latitude *
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-bold text-gray-700">
+                Location *
               </label>
-              <input
-                type="number"
-                step="0.000001"
-                value={formData.latitude}
-                onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) })}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                required
-              />
+              <button
+                type="button"
+                onClick={useCurrentLocation}
+                className="px-4 py-2 bg-green-500 text-white rounded-xl font-bold text-sm hover:bg-green-600 transition-all flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">my_location</span>
+                Use Current Location
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                Longitude *
-              </label>
-              <input
-                type="number"
-                step="0.000001"
-                value={formData.longitude}
-                onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) })}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                required
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Latitude
+                </label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={formData.latitude}
+                  onChange={(e) => setFormData({ ...formData, latitude: parseFloat(e.target.value) })}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Longitude
+                </label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={formData.longitude}
+                  onChange={(e) => setFormData({ ...formData, longitude: parseFloat(e.target.value) })}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  required
+                />
+              </div>
             </div>
+            <p className="text-xs text-gray-500 mt-2">
+              💡 Tip: Upload a geotagged photo, use current location, or enter coordinates manually
+            </p>
           </div>
 
           {/* Buttons */}

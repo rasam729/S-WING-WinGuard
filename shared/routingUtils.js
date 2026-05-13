@@ -17,8 +17,16 @@ const WEIGHTS = {
   w_u: 0.05, // Unresolved issues weight
 };
 
-// Road segment base speed (km/h)
-const BASE_SPEED = 30;
+// Road segment base speed (km/h) - realistic for Bengaluru traffic
+const BASE_SPEED = 15; // Average speed in Bengaluru considering traffic
+
+// Speed adjustments based on road conditions
+const SPEED_FACTORS = {
+  highway: 1.5,      // 22.5 km/h on highways
+  main_road: 1.2,    // 18 km/h on main roads
+  residential: 0.8,  // 12 km/h in residential areas
+  congested: 0.5,    // 7.5 km/h in heavy traffic
+};
 
 /**
  * Calculate safety score for a road segment
@@ -470,10 +478,22 @@ export function calculateRouteStats(path, hazards) {
   
   const avgSafetyScore = path.reduce((sum, p) => sum + (p.safetyScore || 50), 0) / path.length;
   
-  // Calculate estimated time based on safety (safer = can go faster)
+  // Calculate estimated time based on realistic Bengaluru traffic conditions
+  // Base speed: 15 km/h (realistic for city traffic)
+  // Safety factor: Lower safety = slower speed (need to be more careful)
   const safetyFactor = avgSafetyScore / 100;
-  const avgSpeed = BASE_SPEED * (0.7 + safetyFactor * 0.3); // 70-100% of base speed
-  const estimatedMinutes = (totalDistance / avgSpeed) * 60;
+  const avgSpeed = BASE_SPEED * (0.6 + safetyFactor * 0.4); // 60-100% of base speed (9-15 km/h)
+  
+  // Add traffic congestion factor (assume moderate traffic)
+  const trafficFactor = 0.8; // 20% slower due to traffic
+  const effectiveSpeed = avgSpeed * trafficFactor;
+  
+  // Calculate time in minutes
+  const estimatedMinutes = (totalDistance / effectiveSpeed) * 60;
+  
+  // Add buffer time for stops, turns, and signals (10% of travel time)
+  const bufferTime = estimatedMinutes * 0.1;
+  const totalTime = Math.round(estimatedMinutes + bufferTime);
   
   // Count hazards along route
   const routeHazards = hazards.filter(h => {
@@ -482,7 +502,7 @@ export function calculateRouteStats(path, hazards) {
   
   return {
     totalDistance: parseFloat(totalDistance.toFixed(2)),
-    estimatedMinutes: Math.round(estimatedMinutes),
+    estimatedMinutes: totalTime,
     avgSafetyScore: Math.round(avgSafetyScore),
     hazardsNearRoute: routeHazards.length,
     criticalHazards: routeHazards.filter(h => h.status === 'critical').length,

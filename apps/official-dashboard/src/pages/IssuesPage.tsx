@@ -1,7 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useIssuesStore } from '../store/issuesStore';
+
+interface CitizenReport {
+  report_id: number;
+  category: string;
+  severity: number;
+  description: string;
+  latitude: number;
+  longitude: number;
+  status: string;
+  created_at: string;
+  photo_url?: string;
+}
 
 export default function IssuesPage() {
   const navigate = useNavigate();
@@ -9,6 +21,27 @@ export default function IssuesPage() {
   const { issues, updateIssueStatus } = useIssuesStore();
   
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [citizenReports, setCitizenReports] = useState<CitizenReport[]>([]);
+  const [loadingReports, setLoadingReports] = useState(true);
+
+  // Fetch citizen reports from API
+  useEffect(() => {
+    fetchCitizenReports();
+  }, []);
+
+  const fetchCitizenReports = async () => {
+    try {
+      const response = await fetch('/api/reports/all');
+      const data = await response.json();
+      if (data.success && data.data && data.data.reports) {
+        setCitizenReports(data.data.reports);
+      }
+    } catch (error) {
+      console.error('Error fetching citizen reports:', error);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
 
   const handleToggleResolved = async (issueId: number, currentStatus: 'critical' | 'in_progress' | 'resolved') => {
     setUpdatingId(issueId);
@@ -175,7 +208,11 @@ export default function IssuesPage() {
         </header>
 
         <div className="px-6 py-8">
-          {issues.length === 0 ? (
+          {loadingReports ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : issues.length === 0 && citizenReports.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-200">
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
@@ -185,6 +222,7 @@ export default function IssuesPage() {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Dashboard Issues */}
               {issues.map((issue) => (
                 <div
                   key={issue.id}
@@ -282,6 +320,100 @@ export default function IssuesPage() {
                         )}
 
                         {/* View on Map */}
+                        <button 
+                          onClick={() => navigate('/')}
+                          className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                          </svg>
+                          View on Map
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Citizen Reports */}
+              {citizenReports.map((report) => (
+                <div
+                  key={`report-${report.report_id}`}
+                  className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-6 transition-all hover:shadow-md"
+                >
+                  <div className="flex items-start gap-6">
+                    {/* Report Icon & Severity */}
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${
+                        report.severity >= 8 ? 'bg-red-100 text-red-600' : 
+                        report.severity >= 5 ? 'bg-orange-100 text-orange-600' : 
+                        'bg-yellow-100 text-yellow-600'
+                      }`}>
+                        <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                        </svg>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                        report.severity >= 8 ? 'bg-red-100 text-red-600' : 
+                        report.severity >= 5 ? 'bg-orange-100 text-orange-600' : 
+                        'bg-yellow-100 text-yellow-600'
+                      }`}>
+                        {report.severity}/10
+                      </span>
+                    </div>
+
+                    {/* Report Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-xl font-bold text-gray-900">{report.category}</h3>
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-300">
+                              Citizen Report
+                            </span>
+                          </div>
+                          <p className="text-gray-700 mb-3 leading-relaxed">{report.description}</p>
+                          
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                            <span className="flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                              </svg>
+                              <span className="font-medium">{report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                              </svg>
+                              <span className="font-medium">{new Date(report.created_at).toLocaleString()}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Photo Preview */}
+                      {report.photo_url && (
+                        <div className="mt-3 mb-3">
+                          <img
+                            src={report.photo_url}
+                            alt="Report"
+                            className="w-48 h-48 object-cover rounded-lg border-2 border-gray-200"
+                          />
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button 
+                          onClick={() => navigate('/reports')}
+                          className="px-6 py-3 bg-teal-600 text-white rounded-xl text-sm font-bold hover:bg-teal-700 transition-all shadow-md flex items-center gap-2"
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z"/>
+                          </svg>
+                          View Full Report
+                        </button>
+                        
                         <button 
                           onClick={() => navigate('/')}
                           className="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors flex items-center gap-2"

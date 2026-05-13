@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 export interface Issue {
   id: number;
-  type: 'pothole' | 'streetlight' | 'police_booth';
+  type: 'pothole' | 'streetlight' | 'police_booth' | 'hospital';
   latitude: number;
   longitude: number;
   status: 'critical' | 'in_progress' | 'resolved';
@@ -23,6 +23,7 @@ interface IssuesStore {
     potholes: number;
     streetlights: number;
     policeBooths: number;
+    hospitals: number;
   };
 }
 
@@ -68,6 +69,7 @@ export const useIssuesStore = create<IssuesStore>((set, get) => ({
       potholes: issues.filter(i => i.type === 'pothole').length,
       streetlights: issues.filter(i => i.type === 'streetlight').length,
       policeBooths: issues.filter(i => i.type === 'police_booth').length,
+      hospitals: issues.filter(i => i.type === 'hospital').length,
     };
   },
 }));
