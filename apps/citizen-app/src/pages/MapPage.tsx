@@ -827,31 +827,38 @@ const MapPage: React.FC = () => {
 
       {/* Modern Bottom Navigation */}
       <nav className="absolute bottom-0 left-0 right-0 z-[1000] bg-white shadow-2xl rounded-t-3xl border-t border-gray-200">
-        <div className="flex justify-around items-center px-6 py-4">
+        <div className="flex justify-around items-center px-4 py-4">
           <button
             onClick={() => navigate('/map')}
-            className="flex flex-col items-center bg-blue-50 text-blue-600 rounded-2xl px-5 py-2 transition-all"
+            className="flex flex-col items-center bg-blue-50 text-blue-600 rounded-2xl px-4 py-2 transition-all"
           >
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>map</span>
             <span className="text-xs font-bold mt-1">Map</span>
           </button>
           <button
+            onClick={() => navigate('/report')}
+            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gradient-to-r hover:from-red-50 hover:to-orange-50 rounded-2xl transition-all group"
+          >
+            <span className="material-symbols-outlined text-red-600 group-hover:scale-110 transition-transform">add_circle</span>
+            <span className="text-xs font-bold mt-1 text-red-600">Report</span>
+          </button>
+          <button
             onClick={() => navigate('/alerts')}
-            className="flex flex-col items-center text-gray-500 px-5 py-2 hover:bg-gray-50 rounded-2xl transition-all"
+            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gray-50 rounded-2xl transition-all"
           >
             <span className="material-symbols-outlined">notifications</span>
             <span className="text-xs font-bold mt-1">Alerts</span>
           </button>
           <button
             onClick={() => navigate('/stats')}
-            className="flex flex-col items-center text-gray-500 px-5 py-2 hover:bg-gray-50 rounded-2xl transition-all"
+            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gray-50 rounded-2xl transition-all"
           >
             <span className="material-symbols-outlined">analytics</span>
             <span className="text-xs font-bold mt-1">Stats</span>
           </button>
           <button
             onClick={() => navigate('/profile')}
-            className="flex flex-col items-center text-gray-500 px-5 py-2 hover:bg-gray-50 rounded-2xl transition-all"
+            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gray-50 rounded-2xl transition-all"
           >
             <span className="material-symbols-outlined">person</span>
             <span className="text-xs font-bold mt-1">Profile</span>
