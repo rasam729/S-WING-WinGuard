@@ -6,15 +6,9 @@ import 'leaflet/dist/leaflet.css';
 import io from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 import ViosaChatbot from '../components/ViosaChatbot';
-import EnhancedReportForm from '../components/EnhancedReportForm';
-import RouteSelector from '../components/RouteSelector';
-import {
-  calculateSafeRoute,
-  calculateRouteStats,
-  generateInstructions,
-  generateSafetyHeatmap,
-  calculateDistance
-} from '../utils/safeRouteCalculator';
+import NavigationEngine from '../components/NavigationEngine';
+import { RouteOption } from '../utils/enhancedSafeRouteCalculator';
+import { calculateDistance } from '../store/issuesStore';
 
 // Fix Leaflet default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -64,21 +58,17 @@ const MapPage: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showReportForm, setShowReportForm] = useState(false);
-  const [showRouteSelector, setShowRouteSelector] = useState(false);
+  const [showNavigationEngine, setShowNavigationEngine] = useState(false);
   const [showChatbot, setShowChatbot] = useState(false);
+  const [showCoordinatePicker, setShowCoordinatePicker] = useState(false);
+  const [pickedCoordinates, setPickedCoordinates] = useState<[number, number] | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [safeRouteMode, setSafeRouteMode] = useState(true);
+  const [activeRoute, setActiveRoute] = useState<any | null>(null);
   
   // Route state
   const [destination, setDestination] = useState<[number, number] | null>(null);
   const [routePoints, setRoutePoints] = useState<Array<{ lat: number; lng: number; safetyScore: number }>>([]);
   const [routeStats, setRouteStats] = useState<any>(null);
-  const [instructions, setInstructions] = useState<string[]>([]);
-  
-  // Heatmap state
-  const [showHeatmap, setShowHeatmap] = useState(false);
-  const [heatmapData, setHeatmapData] = useState<Array<{ lat: number; lng: number; intensity: number }>>([]);
 
   // Form state (kept for backward compatibility)
   const [formData, setFormData] = useState({
@@ -93,8 +83,8 @@ const MapPage: React.FC = () => {
   const MapClickHandler = () => {
     useMapEvents({
       click: (e) => {
-        if (!destination && userLocation) {
-          setDestination([e.latlng.lat, e.latlng.lng]);
+        if (showCoordinatePicker) {
+          setPickedCoordinates([e.latlng.lat, e.latlng.lng]);
         }
       },
     });
@@ -148,11 +138,24 @@ const MapPage: React.FC = () => {
     }
   };
 
-  const getMarkerColor = (status: string, severity: number) => {
+  const getMarkerColor = (status: string, severity: number, type: string) => {
+    // Hospitals are always pink
+    if (type === 'hospital') return '#ec4899'; // pink
+    // Police booths are always blue
+    if (type === 'police_booth') return '#3b82f6'; // blue
+    // Other issues based on status
     if (status === 'Resolved') return '#22c55e'; // green
     if (severity >= 8) return '#ef4444'; // red
     if (severity >= 5) return '#f59e0b'; // orange
     return '#eab308'; // yellow
+  };
+
+  const getMarkerIcon = (type: string) => {
+    if (type === 'hospital') return '🏥';
+    if (type === 'police_booth') return '👮';
+    if (type === 'pothole') return '🕳️';
+    if (type === 'streetlight') return '💡';
+    return '⚠️';
   };
 
   const getUserLocation = () => {
@@ -165,18 +168,6 @@ const MapPage: React.FC = () => {
           ];
           setUserLocation(location);
           setFormData({ ...formData, latitude: location[0], longitude: location[1] });
-          
-          // Generate heatmap around user location
-          if (reports.length > 0) {
-            const searchRadius = 5000; // 5km
-            const heatmap = generateSafetyHeatmap(
-              { lat: location[0], lng: location[1] },
-              searchRadius,
-              reports,
-              15
-            );
-            setHeatmapData(heatmap);
-          }
         },
         (error) => {
           console.error('Error getting location:', error);
@@ -186,41 +177,11 @@ const MapPage: React.FC = () => {
     }
   };
 
-  const calculateRoute = () => {
-    if (!userLocation || !destination) {
-      alert('Please set both start and destination points');
-      return;
-    }
-
-    // Calculate both safe and fast routes
-    const safeRoute = calculateSafeRoute(
-      { lat: userLocation[0], lng: userLocation[1] },
-      { lat: destination[0], lng: destination[1] },
-      reports,
-      true // Safe mode
-    );
-
-    const fastRoute = calculateSafeRoute(
-      { lat: userLocation[0], lng: userLocation[1] },
-      { lat: destination[0], lng: destination[1] },
-      reports,
-      false // Fast mode
-    );
-
-    setRoutePoints(safeRouteMode ? safeRoute : fastRoute);
-    
-    const stats = calculateRouteStats(safeRouteMode ? safeRoute : fastRoute);
-    setRouteStats(stats);
-    
-    const turnInstructions = generateInstructions(safeRouteMode ? safeRoute : fastRoute);
-    setInstructions(turnInstructions);
-  };
-
   const clearRoute = () => {
     setDestination(null);
     setRoutePoints([]);
     setRouteStats(null);
-    setInstructions([]);
+    setActiveRoute(null);
   };
 
   const getNearbyReports = () => {
@@ -235,13 +196,39 @@ const MapPage: React.FC = () => {
     });
   };
 
+  const handleRouteConfirm = (route: any) => {
+    setActiveRoute(route);
+    setRoutePoints(route.path);
+    setRouteStats(route.stats);
+    
+    // Set destination
+    if (route.path.length > 0) {
+      const lastPoint = route.path[route.path.length - 1];
+      setDestination([lastPoint.lat, lastPoint.lng]);
+    }
+    
+    setShowNavigationEngine(false);
+  };
+
   const handleRouteSelection = (route: any) => {
-    // Convert route waypoints to the format expected by the map
-    const points = route.waypoints.map((wp: any) => ({
+    // For Viosa chatbot integration
+    const points = route.waypoints?.map((wp: any) => ({
       lat: wp.lat,
       lng: wp.lng,
-      safetyScore: route.safetyScore
-    }));
+      safetyScore: wp.safetyScore || route.safetyScore
+    })) || route.path;
+    
+    setActiveRoute({
+      path: points,
+      stats: {
+        distanceKm: route.distance,
+        estimatedMinutes: route.estimatedTime,
+        avgSafetyScore: route.safetyScore,
+        safetyRating: route.recommendation
+      },
+      color: route.color,
+      name: route.name
+    });
     
     setRoutePoints(points);
     setRouteStats({
@@ -251,17 +238,9 @@ const MapPage: React.FC = () => {
       safetyRating: route.recommendation
     });
     
-    // Set destination from route
-    if (route.waypoints.length > 0) {
-      const lastPoint = route.waypoints[route.waypoints.length - 1];
+    if (points.length > 0) {
+      const lastPoint = points[points.length - 1];
       setDestination([lastPoint.lat, lastPoint.lng]);
-    }
-    
-    // Update safe route mode based on route type
-    if (route.routeType === 'safest') {
-      setSafeRouteMode(true);
-    } else if (route.routeType === 'fastest') {
-      setSafeRouteMode(false);
     }
   };
 
@@ -288,11 +267,29 @@ const MapPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowRouteSelector(true)}
-              className="p-3 hover:bg-blue-50 rounded-xl transition-all duration-200 group"
-              title="Route Planner"
+              onClick={() => {
+                setShowCoordinatePicker(!showCoordinatePicker);
+                if (!showCoordinatePicker) {
+                  setPickedCoordinates(null);
+                }
+              }}
+              className={`p-3 rounded-xl transition-all duration-200 group ${
+                showCoordinatePicker ? 'bg-purple-100' : 'hover:bg-purple-50'
+              }`}
+              title="Pick Coordinates"
             >
-              <span className="material-symbols-outlined text-blue-600 group-hover:scale-110 transition-transform">route</span>
+              <span className={`material-symbols-outlined group-hover:scale-110 transition-transform ${
+                showCoordinatePicker ? 'text-purple-600' : 'text-purple-600'
+              }`}>
+                pin_drop
+              </span>
+            </button>
+            <button
+              onClick={() => setShowNavigationEngine(true)}
+              className="p-3 hover:bg-blue-50 rounded-xl transition-all duration-200 group"
+              title="Guardian Path Navigator"
+            >
+              <span className="material-symbols-outlined text-blue-600 group-hover:scale-110 transition-transform">explore</span>
             </button>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
@@ -327,22 +324,39 @@ const MapPage: React.FC = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        {/* Map click handler for setting destination */}
+        {/* Map click handler for coordinate picking */}
         <MapClickHandler />
         
-        {/* Heatmap overlay */}
-        {showHeatmap && heatmapData.map((point, idx) => (
-          <Circle
-            key={`heat-${idx}`}
-            center={[point.lat, point.lng]}
-            radius={200}
-            pathOptions={{
-              fillColor: point.intensity > 0.7 ? '#ef4444' : point.intensity > 0.4 ? '#f59e0b' : '#10b981',
-              fillOpacity: point.intensity * 0.4,
-              stroke: false
-            }}
-          />
-        ))}
+        {/* Picked coordinate marker */}
+        {pickedCoordinates && (
+          <Marker
+            position={pickedCoordinates}
+            icon={L.divIcon({
+              className: 'custom-marker',
+              html: '<div style="background: linear-gradient(135deg, #8b5cf6, #ec4899); width: 40px; height: 40px; border-radius: 50%; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: flex; align-items: center; justify-center; color: white; font-size: 20px; animation: pulse 2s infinite;">📍</div>',
+              iconSize: [40, 40],
+              iconAnchor: [20, 20],
+            })}
+          >
+            <Popup>
+              <div className="text-sm">
+                <p className="font-bold mb-1">Selected Location</p>
+                <p className="text-xs text-gray-600">
+                  {pickedCoordinates[0].toFixed(6)}, {pickedCoordinates[1].toFixed(6)}
+                </p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${pickedCoordinates[0].toFixed(6)}, ${pickedCoordinates[1].toFixed(6)}`);
+                    alert('Coordinates copied to clipboard!');
+                  }}
+                  className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-xs font-bold hover:bg-blue-600"
+                >
+                  Copy Coordinates
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        )}
         
         {/* User location */}
         {userLocation && (
@@ -377,34 +391,18 @@ const MapPage: React.FC = () => {
           </Marker>
         )}
 
-        {/* Route visualization with gradient based on safety */}
-        {routePoints.length > 0 && (
-          <>
-            <Polyline
-              positions={routePoints.map(p => [p.lat, p.lng])}
-              pathOptions={{
-                color: safeRouteMode ? '#10b981' : '#3b82f6',
-                weight: 8,
-                opacity: 0.9,
-                lineCap: 'round',
-                lineJoin: 'round',
-              }}
-            />
-            {/* Safety indicators along route - larger and more visible */}
-            {routePoints.filter((_, idx) => idx % 2 === 0).map((point, idx) => (
-              <Circle
-                key={`route-${idx}`}
-                center={[point.lat, point.lng]}
-                radius={80}
-                pathOptions={{
-                  fillColor: point.safetyScore >= 70 ? '#10b981' : point.safetyScore >= 40 ? '#f59e0b' : '#ef4444',
-                  fillOpacity: 0.6,
-                  color: point.safetyScore >= 70 ? '#059669' : point.safetyScore >= 40 ? '#d97706' : '#dc2626',
-                  weight: 2,
-                }}
-              />
-            ))}
-          </>
+        {/* Route visualization with color based on route type - NO CIRCLES */}
+        {routePoints.length > 0 && activeRoute && (
+          <Polyline
+            positions={routePoints.map(p => [p.lat, p.lng])}
+            pathOptions={{
+              color: activeRoute.color || '#10b981',
+              weight: 6,
+              opacity: 0.8,
+              lineCap: 'round',
+              lineJoin: 'round',
+            }}
+          />
         )}
 
         {/* Reports */}
@@ -412,11 +410,19 @@ const MapPage: React.FC = () => {
           <Marker
             key={report.report_id}
             position={[report.latitude, report.longitude]}
-            icon={createCustomIcon(getMarkerColor(report.status, report.severity))}
+            icon={L.divIcon({
+              className: 'custom-marker',
+              html: `<div style="background: ${getMarkerColor(report.status, report.severity, report.category.toLowerCase())}; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-center; font-size: 18px;">${getMarkerIcon(report.category.toLowerCase())}</div>`,
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
+            })}
           >
             <Popup>
               <div className="p-2">
-                <h3 className="font-bold text-base">{report.category}</h3>
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <span>{getMarkerIcon(report.category.toLowerCase())}</span>
+                  {report.category}
+                </h3>
                 <p className="text-sm text-gray-600 mt-1">{report.description}</p>
                 <p className="text-xs mt-2">
                   <span className={`px-2 py-1 rounded-full font-medium ${
@@ -438,7 +444,7 @@ const MapPage: React.FC = () => {
         ))}
       </MapContainer>
 
-      {/* Modern Floating Search & Route Toggle */}
+      {/* Modern Floating Search */}
       <div className="absolute top-24 left-0 right-0 px-6 z-[999] pointer-events-none">
         <div className="max-w-2xl mx-auto space-y-4 pointer-events-auto">
           {/* Search Bar */}
@@ -449,40 +455,6 @@ const MapPage: React.FC = () => {
               placeholder="Search location in Bengaluru..."
               type="text"
             />
-          </div>
-
-          {/* Route Mode Toggle - Modern Design */}
-          <div className="flex justify-center">
-            <div className="bg-white shadow-xl p-1.5 rounded-2xl flex gap-2 border border-gray-200">
-              <button
-                onClick={() => {
-                  setSafeRouteMode(true);
-                  if (routePoints.length > 0) calculateRoute();
-                }}
-                className={`px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all duration-200 ${
-                  safeRouteMode
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/30'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg">verified_user</span>
-                Safe Route
-              </button>
-              <button
-                onClick={() => {
-                  setSafeRouteMode(false);
-                  if (routePoints.length > 0) calculateRoute();
-                }}
-                className={`px-8 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all duration-200 ${
-                  !safeRouteMode
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg">speed</span>
-                Fast Route
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -497,19 +469,13 @@ const MapPage: React.FC = () => {
             my_location
           </span>
         </button>
-        <button
-          onClick={() => setShowReportForm(true)}
-          className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 shadow-xl flex items-center justify-center text-white hover:scale-105 transition-transform duration-200 hover:shadow-2xl"
-        >
-          <span className="material-symbols-outlined text-3xl">add_alert</span>
-        </button>
       </div>
 
       {/* Modern Legend */}
       <div className="absolute bottom-28 left-6 z-[999]">
-        <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 max-w-[220px]">
+        <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 max-w-[240px]">
           <h3 className="font-bold text-xs text-gray-500 mb-3 uppercase tracking-wider">
-            Safety Index
+            Map Legend
           </h3>
           <div className="space-y-2.5">
             <div className="flex items-center gap-3">
@@ -523,6 +489,14 @@ const MapPage: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 rounded-full bg-red-500 shadow-sm"></div>
               <span className="text-sm text-gray-700 font-medium">High Risk</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 rounded-full bg-blue-500 shadow-sm"></div>
+              <span className="text-sm text-gray-700 font-medium">👮 Police Booth</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 rounded-full bg-pink-500 shadow-sm"></div>
+              <span className="text-sm text-gray-700 font-medium">🏥 Hospital</span>
             </div>
           </div>
         </div>
@@ -562,20 +536,12 @@ const MapPage: React.FC = () => {
         </div>
       )}
 
-      {/* Enhanced Report Form Component */}
-      <EnhancedReportForm
-        isOpen={showReportForm}
-        onClose={() => setShowReportForm(false)}
-        onSuccess={fetchReports}
-        defaultLocation={userLocation ? { latitude: userLocation[0], longitude: userLocation[1] } : undefined}
-      />
-
-      {/* Route Selector Component */}
-      <RouteSelector
-        isOpen={showRouteSelector}
-        onClose={() => setShowRouteSelector(false)}
-        onRouteSelect={handleRouteSelection}
+      {/* Navigation Engine Component */}
+      <NavigationEngine
+        isOpen={showNavigationEngine}
+        onClose={() => setShowNavigationEngine(false)}
         userLocation={userLocation}
+        onRouteConfirm={handleRouteConfirm}
       />
 
       {/* Modern Bottom Navigation */}
@@ -612,12 +578,16 @@ const MapPage: React.FC = () => {
         </div>
       </nav>
 
-      {/* Modern Viosa Chatbot Button */}
+      {/* Viosa Chatbot Floating Button - Improved */}
       <button 
         onClick={() => setShowChatbot(true)}
-        className="fixed bottom-32 right-6 w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-2xl flex items-center justify-center text-white hover:scale-105 transition-transform duration-200 z-[1000] animate-pulse"
+        className="fixed bottom-32 right-6 w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-2xl flex flex-col items-center justify-center text-white hover:scale-110 transition-all duration-300 z-[1000] group"
       >
-        <span className="material-symbols-outlined text-3xl">smart_toy</span>
+        <svg className="w-8 h-8 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        <span className="text-[9px] font-bold tracking-wide">VIOSA</span>
+        <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
       </button>
 
       {/* Viosa Chatbot Component */}
@@ -626,120 +596,110 @@ const MapPage: React.FC = () => {
         onClose={() => setShowChatbot(false)}
         userLocation={userLocation || undefined}
         nearbyReports={getNearbyReports()}
+        onRouteSelect={handleRouteSelection}
       />
 
-      {/* Modern Route Control Panel */}
-      {userLocation && (
-        <div className="absolute top-48 right-6 z-[999] pointer-events-auto">
-          <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 w-72">
-            <h3 className="font-bold text-sm text-gray-700 mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-blue-600">route</span>
-              Route Planning
-            </h3>
+      {/* Coordinate Picker Panel */}
+      {showCoordinatePicker && (
+        <div className="absolute top-32 left-6 z-[999] pointer-events-auto">
+          <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 w-80">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2">
+                <span className="material-symbols-outlined text-purple-600">pin_drop</span>
+                Pick Coordinates
+              </h3>
+              <button
+                onClick={() => {
+                  setShowCoordinatePicker(false);
+                  setPickedCoordinates(null);
+                }}
+                className="p-1 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <span className="material-symbols-outlined text-red-600 text-sm">close</span>
+              </button>
+            </div>
             
-            {!destination ? (
-              <p className="text-xs text-gray-500 mb-3 bg-blue-50 p-3 rounded-xl border border-blue-200">
-                Click on the map to set your destination
-              </p>
-            ) : (
+            <p className="text-xs text-gray-600 mb-4 bg-purple-50 p-3 rounded-xl border border-purple-200">
+              📍 Click anywhere on the map to get coordinates
+            </p>
+            
+            {pickedCoordinates ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs text-gray-700 bg-green-50 p-2 rounded-lg">
-                  <span className="material-symbols-outlined text-green-600 text-sm">location_on</span>
-                  <span className="font-medium">Destination set</span>
-                </div>
-                
-                {routeStats && (
-                  <div className="bg-gradient-to-br from-gray-50 to-blue-50 p-4 rounded-xl space-y-2 border border-gray-200">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600 font-medium">Distance:</span>
-                      <span className="font-bold text-gray-900">{routeStats.distanceKm} km</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600 font-medium">Time:</span>
-                      <span className="font-bold text-gray-900">{routeStats.estimatedMinutes} min</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-600 font-medium">Safety:</span>
-                      <span className={`font-bold ${
-                        routeStats.avgSafetyScore >= 80 ? 'text-green-600' :
-                        routeStats.avgSafetyScore >= 60 ? 'text-yellow-600' :
-                        'text-red-600'
-                      }`}>
-                        {routeStats.avgSafetyScore}/100
-                      </span>
-                    </div>
-                    <div className="pt-2 border-t border-gray-300">
-                      <span className="text-xs font-bold text-gray-800">{routeStats.safetyRating}</span>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex gap-2">
-                  {!routePoints.length ? (
-                    <button
-                      onClick={calculateRoute}
-                      className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white text-xs font-bold hover:shadow-lg transition-all flex items-center justify-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-sm">directions</span>
-                      Calculate
-                    </button>
-                  ) : (
-                    <button
-                      onClick={clearRoute}
-                      className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold hover:shadow-lg transition-all flex items-center justify-center gap-1"
-                    >
-                      <span className="material-symbols-outlined text-sm">close</span>
-                      Clear
-                    </button>
-                  )}
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
+                  <p className="text-xs text-gray-600 mb-1">Latitude</p>
+                  <p className="font-bold text-lg text-gray-900">{pickedCoordinates[0].toFixed(6)}</p>
+                  <p className="text-xs text-gray-600 mt-2 mb-1">Longitude</p>
+                  <p className="font-bold text-lg text-gray-900">{pickedCoordinates[1].toFixed(6)}</p>
                 </div>
                 
                 <button
-                  onClick={() => setShowHeatmap(!showHeatmap)}
-                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-                    showHeatmap
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-200'
-                  }`}
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${pickedCoordinates[0].toFixed(6)}, ${pickedCoordinates[1].toFixed(6)}`);
+                    alert('Coordinates copied to clipboard!');
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
-                  <span className="material-symbols-outlined text-sm">
-                    {showHeatmap ? 'visibility_off' : 'visibility'}
-                  </span>
-                  {showHeatmap ? 'Hide' : 'Show'} Heatmap
+                  <span className="material-symbols-outlined text-sm">content_copy</span>
+                  Copy Coordinates
                 </button>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <span className="material-symbols-outlined text-gray-300 text-6xl mb-2">location_searching</span>
+                <p className="text-sm text-gray-500">Waiting for map click...</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Modern Turn-by-Turn Instructions Panel */}
-      {instructions.length > 0 && (
-        <div className="absolute top-48 left-6 z-[999] pointer-events-auto max-w-xs">
-          <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200">
+      {/* Modern Route Info Panel - Shows active route details */}
+      {activeRoute && routeStats && (
+        <div className="absolute top-32 right-6 z-[999] pointer-events-auto">
+          <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 w-80">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2">
-                <span className="material-symbols-outlined text-blue-600">navigation</span>
-                Navigation
+                <span className="material-symbols-outlined" style={{ color: activeRoute.color }}>route</span>
+                {activeRoute.name || 'Active Route'}
               </h3>
               <button
-                onClick={() => setInstructions([])}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={clearRoute}
+                className="p-1 hover:bg-red-50 rounded-lg transition-colors"
               >
-                <span className="material-symbols-outlined text-sm">close</span>
+                <span className="material-symbols-outlined text-red-600 text-sm">close</span>
               </button>
             </div>
             
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {instructions.map((instruction, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-start gap-2 p-3 bg-gray-50 rounded-xl text-xs text-gray-800 border border-gray-200 hover:border-blue-300 transition-colors"
-                >
-                  <span className="text-blue-600 font-bold min-w-[20px]">{idx + 1}.</span>
-                  <span className="font-medium">{instruction}</span>
+            {/* Prominent Time Display */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl mb-3 border-2 border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-blue-600 font-bold uppercase mb-1">Estimated Time</p>
+                  <p className="text-4xl font-bold text-blue-900">{routeStats.estimatedMinutes}</p>
+                  <p className="text-sm text-blue-600 font-medium">minutes</p>
                 </div>
-              ))}
+                <span className="material-symbols-outlined text-blue-600 text-5xl">schedule</span>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-gray-50 to-purple-50 p-4 rounded-xl space-y-2 border border-gray-200">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-600 font-medium">Distance:</span>
+                <span className="font-bold text-gray-900">{routeStats.distanceKm || routeStats.totalDistance} km</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-600 font-medium">Safety Score:</span>
+                <span className={`font-bold ${
+                  routeStats.avgSafetyScore >= 80 ? 'text-green-600' :
+                  routeStats.avgSafetyScore >= 60 ? 'text-yellow-600' :
+                  'text-red-600'
+                }`}>
+                  {routeStats.avgSafetyScore}/100
+                </span>
+              </div>
+              <div className="pt-2 border-t border-gray-300">
+                <span className="text-xs font-bold text-gray-800">{routeStats.safetyRating}</span>
+              </div>
             </div>
           </div>
         </div>
