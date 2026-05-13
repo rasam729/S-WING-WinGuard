@@ -1,0 +1,412 @@
+### Safety Score & Analytics API Examples
+### Use with REST Client extension in VS Code or any HTTP client
+
+@baseUrl = http://localhost:3000/api/safety-score
+
+###############################################################################
+# 1. Calculate Safety Score for a Location
+###############################################################################
+
+### Example 1.1: Calculate score for Indiranagar
+GET {{baseUrl}}/calculate?lat=12.9716&lng=77.5946&radius=1000
+
+### Example 1.2: Calculate score for Koramangala (High Crime Area)
+GET {{baseUrl}}/calculate?lat=12.9352&lng=77.6245&radius=1000
+
+### Example 1.3: Calculate score for Basavanagudi (Low Crime Area)
+GET {{baseUrl}}/calculate?lat=12.9423&lng=77.5742&radius=1000
+
+### Example 1.4: Calculate score with larger radius (2km)
+GET {{baseUrl}}/calculate?lat=12.9716&lng=77.5946&radius=2000
+
+###############################################################################
+# 2. Simulate Infrastructure Improvements
+###############################################################################
+
+### Example 2.1: Add 5 streetlights to Koramangala
+POST {{baseUrl}}/simulate
+Content-Type: application/json
+
+{
+  "lat": 12.9352,
+  "lng": 77.6245,
+  "radius": 1000,
+  "changes": {
+    "addStreetlights": 5,
+    "addPoliceBooths": 0,
+    "fixIssues": 0
+  }
+}
+
+### Example 2.2: Add 2 police booths to Whitefield
+POST {{baseUrl}}/simulate
+Content-Type: application/json
+
+{
+  "lat": 12.9698,
+  "lng": 77.7499,
+  "radius": 1000,
+  "changes": {
+    "addStreetlights": 0,
+    "addPoliceBooths": 2,
+    "fixIssues": 0
+  }
+}
+
+### Example 2.3: Comprehensive improvement (lights + booths + fix issues)
+POST {{baseUrl}}/simulate
+Content-Type: application/json
+
+{
+  "lat": 12.9352,
+  "lng": 77.6245,
+  "radius": 1000,
+  "changes": {
+    "addStreetlights": 5,
+    "addPoliceBooths": 2,
+    "fixIssues": 3
+  }
+}
+
+### Example 2.4: Fix broken streetlights in BTM Layout
+POST {{baseUrl}}/simulate
+Content-Type: application/json
+
+{
+  "lat": 12.9165,
+  "lng": 77.6101,
+  "radius": 1000,
+  "changes": {
+    "addStreetlights": 0,
+    "addPoliceBooths": 0,
+    "fixIssues": 5
+  }
+}
+
+###############################################################################
+# 3. Get All Area Scores
+###############################################################################
+
+### Example 3.1: Get safety scores for all Bengaluru areas
+GET {{baseUrl}}/areas
+
+###############################################################################
+# 4. Get Crime Data
+###############################################################################
+
+### Example 4.1: Get crime rate data for all areas
+GET {{baseUrl}}/crime-data
+
+###############################################################################
+# 5. Generate Safety Heatmap
+###############################################################################
+
+### Example 5.1: Generate heatmap for Bengaluru center (8x8 grid)
+GET {{baseUrl}}/heatmap?center_lat=12.9716&center_lng=77.5946&grid_size=8
+
+### Example 5.2: Generate heatmap for Koramangala area (10x10 grid)
+GET {{baseUrl}}/heatmap?center_lat=12.9352&center_lng=77.6245&grid_size=10
+
+### Example 5.3: Generate smaller heatmap (5x5 grid) for faster response
+GET {{baseUrl}}/heatmap?center_lat=12.9716&center_lng=77.5946&grid_size=5
+
+###############################################################################
+# 6. Get Safety Score Trends
+###############################################################################
+
+### Example 6.1: Get 30-day trend for Indiranagar
+GET {{baseUrl}}/trends?lat=12.9716&lng=77.5946&days=30
+
+### Example 6.2: Get 7-day trend for Koramangala
+GET {{baseUrl}}/trends?lat=12.9352&lng=77.6245&days=7
+
+### Example 6.3: Get 90-day trend for Basavanagudi
+GET {{baseUrl}}/trends?lat=12.9423&lng=77.5742&days=90
+
+###############################################################################
+# 7. Compare Multiple Locations
+###############################################################################
+
+### Example 7.1: Compare high crime vs low crime areas
+POST {{baseUrl}}/compare
+Content-Type: application/json
+
+{
+  "locations": [
+    {
+      "name": "Koramangala (High Crime)",
+      "lat": 12.9352,
+      "lng": 77.6245
+    },
+    {
+      "name": "Basavanagudi (Low Crime)",
+      "lat": 12.9423,
+      "lng": 77.5742
+    }
+  ]
+}
+
+### Example 7.2: Compare three major tech hubs
+POST {{baseUrl}}/compare
+Content-Type: application/json
+
+{
+  "locations": [
+    {
+      "name": "Koramangala",
+      "lat": 12.9352,
+      "lng": 77.6245
+    },
+    {
+      "name": "Indiranagar",
+      "lat": 12.9716,
+      "lng": 77.5946
+    },
+    {
+      "name": "Whitefield",
+      "lat": 12.9698,
+      "lng": 77.7499
+    }
+  ]
+}
+
+### Example 7.3: Compare all South Bengaluru areas
+POST {{baseUrl}}/compare
+Content-Type: application/json
+
+{
+  "locations": [
+    {
+      "name": "Koramangala",
+      "lat": 12.9352,
+      "lng": 77.6245,
+      "radius": 1000
+    },
+    {
+      "name": "Jayanagar",
+      "lat": 12.9250,
+      "lng": 77.5838,
+      "radius": 1000
+    },
+    {
+      "name": "BTM Layout",
+      "lat": 12.9165,
+      "lng": 77.6101,
+      "radius": 1000
+    },
+    {
+      "name": "JP Nagar",
+      "lat": 12.9081,
+      "lng": 77.5855,
+      "radius": 1000
+    },
+    {
+      "name": "Basavanagudi",
+      "lat": 12.9423,
+      "lng": 77.5742,
+      "radius": 1000
+    }
+  ]
+}
+
+###############################################################################
+# 8. Real-World Scenarios
+###############################################################################
+
+### Scenario 1: Urban Planner - Find areas needing most improvement
+# Step 1: Get all area scores
+GET {{baseUrl}}/areas
+
+# Step 2: Calculate detailed score for worst area (Koramangala)
+GET {{baseUrl}}/calculate?lat=12.9352&lng=77.6245&radius=1000
+
+# Step 3: Simulate improvements
+POST {{baseUrl}}/simulate
+Content-Type: application/json
+
+{
+  "lat": 12.9352,
+  "lng": 77.6245,
+  "radius": 1000,
+  "changes": {
+    "addStreetlights": 10,
+    "addPoliceBooths": 3,
+    "fixIssues": 5
+  }
+}
+
+###
+
+### Scenario 2: Budget Allocation - Compare ROI of different investments
+# Option A: Add 10 streetlights
+POST {{baseUrl}}/simulate
+Content-Type: application/json
+
+{
+  "lat": 12.9352,
+  "lng": 77.6245,
+  "radius": 1000,
+  "changes": {
+    "addStreetlights": 10,
+    "addPoliceBooths": 0,
+    "fixIssues": 0
+  }
+}
+
+###
+
+# Option B: Add 5 police booths
+POST {{baseUrl}}/simulate
+Content-Type: application/json
+
+{
+  "lat": 12.9352,
+  "lng": 77.6245,
+  "radius": 1000,
+  "changes": {
+    "addStreetlights": 0,
+    "addPoliceBooths": 5,
+    "fixIssues": 0
+  }
+}
+
+###
+
+# Option C: Balanced approach
+POST {{baseUrl}}/simulate
+Content-Type: application/json
+
+{
+  "lat": 12.9352,
+  "lng": 77.6245,
+  "radius": 1000,
+  "changes": {
+    "addStreetlights": 5,
+    "addPoliceBooths": 2,
+    "fixIssues": 3
+  }
+}
+
+###
+
+### Scenario 3: Citizen Safety - Find safest route between two points
+# Compare safety scores of intermediate areas
+POST {{baseUrl}}/compare
+Content-Type: application/json
+
+{
+  "locations": [
+    {
+      "name": "Route A: Via Koramangala",
+      "lat": 12.9352,
+      "lng": 77.6245
+    },
+    {
+      "name": "Route B: Via Jayanagar",
+      "lat": 12.9250,
+      "lng": 77.5838
+    },
+    {
+      "name": "Route C: Via Basavanagudi",
+      "lat": 12.9423,
+      "lng": 77.5742
+    }
+  ]
+}
+
+###
+
+### Scenario 4: Performance Tracking - Monitor improvements over time
+# Get current score
+GET {{baseUrl}}/calculate?lat=12.9352&lng=77.6245&radius=1000
+
+###
+
+# Get historical trend
+GET {{baseUrl}}/trends?lat=12.9352&lng=77.6245&days=90
+
+###
+
+# Compare with neighboring areas
+POST {{baseUrl}}/compare
+Content-Type: application/json
+
+{
+  "locations": [
+    {
+      "name": "Koramangala",
+      "lat": 12.9352,
+      "lng": 77.6245
+    },
+    {
+      "name": "BTM Layout (Neighbor)",
+      "lat": 12.9165,
+      "lng": 77.6101
+    },
+    {
+      "name": "Jayanagar (Neighbor)",
+      "lat": 12.9250,
+      "lng": 77.5838
+    }
+  ]
+}
+
+###############################################################################
+# 9. Edge Cases and Testing
+###############################################################################
+
+### Test 9.1: Invalid coordinates (should return error)
+GET {{baseUrl}}/calculate?lat=invalid&lng=77.5946&radius=1000
+
+###
+
+### Test 9.2: Missing parameters (should return error)
+GET {{baseUrl}}/calculate?lat=12.9716
+
+###
+
+### Test 9.3: Very large radius (should still work)
+GET {{baseUrl}}/calculate?lat=12.9716&lng=77.5946&radius=10000
+
+###
+
+### Test 9.4: Zero changes simulation (should return same score)
+POST {{baseUrl}}/simulate
+Content-Type: application/json
+
+{
+  "lat": 12.9352,
+  "lng": 77.6245,
+  "radius": 1000,
+  "changes": {
+    "addStreetlights": 0,
+    "addPoliceBooths": 0,
+    "fixIssues": 0
+  }
+}
+
+###
+
+### Test 9.5: Extreme changes (should cap at reasonable values)
+POST {{baseUrl}}/simulate
+Content-Type: application/json
+
+{
+  "lat": 12.9352,
+  "lng": 77.6245,
+  "radius": 1000,
+  "changes": {
+    "addStreetlights": 100,
+    "addPoliceBooths": 50,
+    "fixIssues": 100
+  }
+}
+
+###############################################################################
+# Notes:
+# - All coordinates are for Bengaluru, India
+# - Radius is in meters (default: 1000m = 1km)
+# - Scores range from 0-100
+# - Grades: A+ (90-100), A (80-89), B (70-79), C (60-69), D (50-59), F (0-49)
+# - Crime rates are per 1000 people per year
+###############################################################################

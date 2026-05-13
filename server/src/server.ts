@@ -83,11 +83,15 @@ import simulationRoutes from './routes/simulationRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import notificationsRoutes from './routes/notificationsRoutes';
 import issuesRoutes from './routes/issues';
+import safetyScoreRoutes from './routes/safetyScoreRoutes';
+import budgetTrackingRoutes from './routes/budgetTrackingRoutes';
 
 app.use('/api', simulationRoutes);
 app.use('/api', analyticsRoutes);
 app.use('/api', notificationsRoutes);
 app.use('/api/issues', issuesRoutes);
+app.use('/api', safetyScoreRoutes);
+app.use('/api', budgetTrackingRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

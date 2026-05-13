@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -55,18 +55,6 @@ const createGlowingIcon = (icon: string, status: 'critical' | 'in_progress' | 'r
   });
 };
 
-interface CitizenReport {
-  report_id: number;
-  category: string;
-  severity: number;
-  description: string;
-  latitude: number;
-  longitude: number;
-  status: string;
-  created_at: string;
-  photo_url?: string;
-}
-
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
@@ -74,30 +62,9 @@ export default function DashboardPage() {
   const stats = getStats();
   
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
-  const [simulationMode, setSimulationMode] = useState<'install' | 'patch' | null>(null);
-  const [installType, setInstallType] = useState<'streetlight' | 'police_booth' | 'hospital' | null>(null);
+  const [simulationMode, setSimulationMode] = useState<'install' | null>(null);
+  const [installType, setInstallType] = useState<'streetlight' | 'police_booth' | null>(null);
   const [clickedLocation, setClickedLocation] = useState<[number, number] | null>(null);
-  const [citizenReports, setCitizenReports] = useState<CitizenReport[]>([]);
-  const [loadingReports, setLoadingReports] = useState(true);
-
-  // Fetch citizen reports from API
-  useEffect(() => {
-    fetchCitizenReports();
-  }, []);
-
-  const fetchCitizenReports = async () => {
-    try {
-      const response = await fetch('/api/reports/all');
-      const data = await response.json();
-      if (data.success && data.data && data.data.reports) {
-        setCitizenReports(data.data.reports);
-      }
-    } catch (error) {
-      console.error('Error fetching citizen reports:', error);
-    } finally {
-      setLoadingReports(false);
-    }
-  };
 
   // Default center (Bengaluru, India)
   const mapCenter: [number, number] = [12.9716, 77.5946];
@@ -137,7 +104,7 @@ export default function DashboardPage() {
         latitude: clickedLocation[0],
         longitude: clickedLocation[1],
         status: 'resolved',
-        description: `New ${installType === 'streetlight' ? 'streetlight' : installType === 'police_booth' ? 'police booth' : 'hospital'} installed`,
+        description: `New ${installType === 'streetlight' ? 'streetlight' : 'police booth'} installed`,
         reportedAt: 'Just now',
         severity: 0
       };
@@ -150,7 +117,7 @@ export default function DashboardPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             user_id: 1,
-            message: `New ${installType === 'streetlight' ? 'streetlight' : installType === 'police_booth' ? 'police booth' : 'hospital'} installed in your area`,
+            message: `New ${installType === 'streetlight' ? 'streetlight' : 'police booth'} installed in your area`,
             type: 'success'
           })
         });
@@ -164,48 +131,9 @@ export default function DashboardPage() {
     }
   };
 
-  const confirmPatch = async () => {
-    if (clickedLocation) {
-      // Find if there's a pothole at this location
-      const nearbyPothole = issues.find(issue => 
-        issue.type === 'pothole' && 
-        Math.abs(issue.latitude - clickedLocation[0]) < 0.001 &&
-        Math.abs(issue.longitude - clickedLocation[1]) < 0.001
-      );
-
-      if (nearbyPothole) {
-        updateIssueStatus(nearbyPothole.id, 'resolved');
-        
-        // Send notification
-        try {
-          await fetch('/api/notifications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user_id: 1,
-              message: `Pothole at your location has been patched!`,
-              type: 'success'
-            })
-          });
-        } catch (error) {
-          console.error('Error sending notification:', error);
-        }
-      }
-      
-      setSimulationMode(null);
-      setClickedLocation(null);
-    }
-  };
-
-  const handleInstallNew = (type: 'streetlight' | 'police_booth' | 'hospital') => {
+  const handleInstallNew = (type: 'streetlight' | 'police_booth') => {
     setSimulationMode('install');
     setInstallType(type);
-    setClickedLocation(null);
-  };
-
-  const handlePatchPothole = () => {
-    setSimulationMode('patch');
-    setInstallType(null);
     setClickedLocation(null);
   };
 
@@ -218,7 +146,7 @@ export default function DashboardPage() {
   const MapClickHandler = () => {
     useMapEvents({
       click: (e: any) => {
-        if (simulationMode === 'install' || simulationMode === 'patch') {
+        if (simulationMode === 'install') {
           setClickedLocation([e.latlng.lat, e.latlng.lng]);
         }
       },
@@ -229,18 +157,11 @@ export default function DashboardPage() {
   const getIconForType = (type: string) => {
     switch (type) {
       case 'pothole':
-      case 'Pothole':
-      case 'Road Crack':
         return '⚠️';
       case 'streetlight':
-      case 'Streetlight':
         return '💡';
       case 'police_booth':
-      case 'Police Booth':
         return '🚔';
-      case 'hospital':
-      case 'Hospital':
-        return '🏥';
       default:
         return '📍';
     }
@@ -304,6 +225,30 @@ export default function DashboardPage() {
               <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
             </svg>
             <span className="text-sm font-medium">Issues</span>
+          </button>
+          <button 
+            onClick={() => navigate('/simulations')}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+            </svg>
+            <span className="text-sm font-medium">Simulations</span>
+          </button>
+          <button 
+            onClick={() => navigate('/safety-scores')}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span className="text-sm font-medium">🎨 Safety Scores</span>
+          </button>
+          <button className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 w-full text-left transition-colors">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+            <span className="text-sm font-medium">Heatmaps</span>
           </button>
           <button 
             onClick={handleLogout}
@@ -397,19 +342,6 @@ export default function DashboardPage() {
               <div className="flex gap-2 flex-wrap">
                 {/* Installation Mode Buttons */}
                 <button 
-                  onClick={() => handlePatchPothole()}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
-                    simulationMode === 'patch'
-                      ? 'bg-orange-600 text-white border-orange-600 shadow-lg'
-                      : 'bg-white text-orange-700 border-orange-300 hover:border-orange-600'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                  </svg>
-                  Patch Pothole/Road Crack
-                </button>
-                <button 
                   onClick={() => handleInstallNew('streetlight')}
                   className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
                     simulationMode === 'install' && installType === 'streetlight'
@@ -435,20 +367,7 @@ export default function DashboardPage() {
                   </svg>
                   Install Police Booth
                 </button>
-                <button 
-                  onClick={() => handleInstallNew('hospital')}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
-                    simulationMode === 'install' && installType === 'hospital'
-                      ? 'bg-red-600 text-white border-red-600 shadow-lg'
-                      : 'bg-white text-red-700 border-red-300 hover:border-red-600'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/>
-                  </svg>
-                  Install Hospital
-                </button>
-                {(simulationMode === 'install' || simulationMode === 'patch') && (
+                {simulationMode === 'install' && (
                   <button 
                     onClick={cancelInstallation}
                     className="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 bg-red-600 text-white hover:bg-red-700 transition-all"
@@ -473,7 +392,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-bold text-gray-900">
-                      Click on the map to place a new {installType === 'streetlight' ? 'streetlight' : installType === 'police_booth' ? 'police booth' : 'hospital'}
+                      Click on the map to place a new {installType === 'streetlight' ? 'streetlight' : 'police booth'}
                     </p>
                     <p className="text-xs text-gray-600 mt-1">
                       {clickedLocation 
@@ -490,40 +409,6 @@ export default function DashboardPage() {
                         <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
                       </svg>
                       Confirm Installation
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {/* Patch Instructions */}
-            {simulationMode === 'patch' && (
-              <div className="px-5 py-3 bg-gradient-to-r from-orange-50 to-red-50 border-b border-orange-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-orange-600 text-white flex items-center justify-center animate-pulse">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-gray-900">
-                      Click on a pothole marker to patch it
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {clickedLocation 
-                        ? `Selected location: ${clickedLocation[0].toFixed(4)}, ${clickedLocation[1].toFixed(4)}` 
-                        : 'No location selected yet'}
-                    </p>
-                  </div>
-                  {clickedLocation && (
-                    <button
-                      onClick={confirmPatch}
-                      className="px-6 py-3 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700 transition-all shadow-lg flex items-center gap-2"
-                    >
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-                      </svg>
-                      Confirm Patch
                     </button>
                   )}
                 </div>
@@ -609,51 +494,8 @@ export default function DashboardPage() {
                   </Marker>
                 ))}
                 
-                {/* Render citizen reports as markers */}
-                {citizenReports.map((report) => (
-                  <Marker
-                    key={`report-${report.report_id}`}
-                    position={[report.latitude, report.longitude]}
-                    icon={createGlowingIcon(getIconForType(report.category), report.status.toLowerCase() === 'resolved' ? 'resolved' : 'critical')}
-                  >
-                    <Popup>
-                      <div className="text-sm min-w-[250px]">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-2xl">{getIconForType(report.category)}</span>
-                          <div>
-                            <p className="font-bold text-gray-900">{report.category}</p>
-                            <span className="text-xs font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-                              Citizen Report
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-gray-700 mb-2">{report.description}</p>
-                        <p className="text-xs text-gray-500 mb-2">Severity: {report.severity}/10</p>
-                        <p className="text-xs text-gray-500 mb-3">
-                          Reported {new Date(report.created_at).toLocaleString()}
-                        </p>
-                        
-                        {report.photo_url && (
-                          <img 
-                            src={report.photo_url} 
-                            alt="Report" 
-                            className="w-full h-32 object-cover rounded-lg mb-3"
-                          />
-                        )}
-                        
-                        <button
-                          onClick={() => navigate('/reports')}
-                          className="w-full px-3 py-2 bg-teal-600 text-white rounded-lg text-xs font-bold hover:bg-teal-700 transition-all"
-                        >
-                          View Full Report
-                        </button>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
-                
                 {/* Temporary marker for installation location */}
-                {clickedLocation && simulationMode === 'install' && installType && (
+                {clickedLocation && simulationMode === 'install' && (
                   <Marker
                     position={clickedLocation}
                     icon={L.divIcon({
@@ -673,7 +515,7 @@ export default function DashboardPage() {
                           font-size: 24px;
                           animation: bounce 1s infinite;
                         ">
-                          ${installType === 'streetlight' ? '💡' : installType === 'police_booth' ? '🚔' : '🏥'}
+                          ${installType === 'streetlight' ? '💡' : '🚔'}
                         </div>
                         <style>
                           @keyframes bounce {
@@ -690,52 +532,7 @@ export default function DashboardPage() {
                       <div className="text-sm">
                         <p className="font-bold text-green-600">New Installation Location</p>
                         <p className="text-xs text-gray-600 mt-1">
-                          {installType === 'streetlight' ? 'Streetlight' : installType === 'police_booth' ? 'Police Booth' : 'Hospital'}
-                        </p>
-                      </div>
-                    </Popup>
-                  </Marker>
-                )}
-                
-                {/* Temporary marker for patch location */}
-                {clickedLocation && simulationMode === 'patch' && (
-                  <Marker
-                    position={clickedLocation}
-                    icon={L.divIcon({
-                      className: 'custom-marker',
-                      html: `
-                        <div style="
-                          width: 40px;
-                          height: 40px;
-                          background: linear-gradient(135deg, #f97316, #ea580c);
-                          border-radius: 50%;
-                          border: 4px solid white;
-                          box-shadow: 0 4px 16px rgba(249, 115, 22, 0.6);
-                          display: flex;
-                          align-items: center;
-                          justify-content: center;
-                          color: white;
-                          font-size: 24px;
-                          animation: bounce 1s infinite;
-                        ">
-                          🔧
-                        </div>
-                        <style>
-                          @keyframes bounce {
-                            0%, 100% { transform: translateY(0); }
-                            50% { transform: translateY(-10px); }
-                          }
-                        </style>
-                      `,
-                      iconSize: [40, 40],
-                      iconAnchor: [20, 20],
-                    })}
-                  >
-                    <Popup>
-                      <div className="text-sm">
-                        <p className="font-bold text-orange-600">Patch Location</p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Click confirm to patch this pothole
+                          {installType === 'streetlight' ? 'Streetlight' : 'Police Booth'}
                         </p>
                       </div>
                     </Popup>
