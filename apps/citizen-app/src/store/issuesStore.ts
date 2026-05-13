@@ -1,4 +1,4 @@
-// Shared issues store for citizen app - synced with dashboard mock data
+// Shared issues store for citizen app - synced with dashboard via API
 export interface Issue {
   id: number;
   type: 'pothole' | 'streetlight' | 'police_booth' | 'hospital';
@@ -10,7 +10,37 @@ export interface Issue {
   severity: number;
 }
 
-// Mock data with issues on actual roads in Bengaluru
+// Fetch issues from API
+let cachedIssues: Issue[] = [];
+let lastFetchTime = 0;
+const CACHE_DURATION = 60000; // 1 minute cache
+
+export const fetchIssuesFromAPI = async (): Promise<Issue[]> => {
+  const now = Date.now();
+  
+  // Return cached data if still fresh
+  if (cachedIssues.length > 0 && now - lastFetchTime < CACHE_DURATION) {
+    return cachedIssues;
+  }
+
+  try {
+    const response = await fetch('/api/issues');
+    const data = await response.json();
+    
+    if (data.success && data.data && data.data.issues) {
+      cachedIssues = data.data.issues;
+      lastFetchTime = now;
+      return cachedIssues;
+    }
+  } catch (error) {
+    console.error('Error fetching issues from API:', error);
+  }
+  
+  // Return cached data or empty array on error
+  return cachedIssues.length > 0 ? cachedIssues : mockIssues;
+};
+
+// Mock data as fallback (same as before)
 export const mockIssues: Issue[] = [
   // Potholes on major roads
   { id: 1, type: 'pothole', latitude: 12.9716, longitude: 77.5946, status: 'critical', description: 'Severe pothole on MG Road near Trinity Metro', reportedAt: '2 hours ago', severity: 9 },
@@ -59,33 +89,73 @@ export const calculateDistance = (
   return R * c;
 };
 
-// Get issues near a location
-export const getIssuesNearLocation = (
+// Get issues near a location (uses API if available, falls back to mock data)
+export const getIssuesNearLocation = async (
   location: { lat: number; lng: number },
   radiusKm: number = 5
-): Issue[] => {
-  return mockIssues.filter(issue => {
+): Promise<Issue[]> => {
+  try {
+    // Try to fetch from API first
+    const response = await fetch(`/api/issues/nearby?lat=${location.lat}&lng=${location.lng}&radius=${radiusKm}`);
+    const data = await response.json();
+    
+    if (data.success && data.data && data.data.issues) {
+      return data.data.issues;
+    }
+  } catch (error) {
+    console.error('Error fetching nearby issues from API:', error);
+  }
+  
+  // Fallback to local calculation with cached/mock data
+  const issues = await fetchIssuesFromAPI();
+  return issues.filter(issue => {
     const distance = calculateDistance(location, { lat: issue.latitude, lng: issue.longitude });
     return distance <= radiusKm;
   });
 };
 
 // Get active (non-resolved) issues
-export const getActiveIssues = (): Issue[] => {
-  return mockIssues.filter(issue => issue.status !== 'resolved');
+export const getActiveIssues = async (): Promise<Issue[]> => {
+  try {
+    const response = await fetch('/api/issues/active');
+    const data = await response.json();
+    
+    if (data.success && data.data && data.data.issues) {
+      return data.data.issues;
+    }
+  } catch (error) {
+    console.error('Error fetching active issues from API:', error);
+  }
+  
+  // Fallback to cached/mock data
+  const issues = await fetchIssuesFromAPI();
+  return issues.filter(issue => issue.status !== 'resolved');
 };
 
 // Get critical issues
-export const getCriticalIssues = (): Issue[] => {
-  return mockIssues.filter(issue => issue.status === 'critical');
+export const getCriticalIssues = async (): Promise<Issue[]> => {
+  try {
+    const response = await fetch('/api/issues/critical');
+    const data = await response.json();
+    
+    if (data.success && data.data && data.data.issues) {
+      return data.data.issues;
+    }
+  } catch (error) {
+    console.error('Error fetching critical issues from API:', error);
+  }
+  
+  // Fallback to cached/mock data
+  const issues = await fetchIssuesFromAPI();
+  return issues.filter(issue => issue.status === 'critical');
 };
 
 // Calculate safety score for a location based on nearby issues
-export const calculateSafetyScore = (
+export const calculateSafetyScore = async (
   location: { lat: number; lng: number },
   radiusKm: number = 1
-): number => {
-  const nearbyIssues = getIssuesNearLocation(location, radiusKm);
+): Promise<number> => {
+  const nearbyIssues = await getIssuesNearLocation(location, radiusKm);
   const activeIssues = nearbyIssues.filter(i => i.status !== 'resolved');
   
   if (activeIssues.length === 0) return 100;
@@ -103,15 +173,16 @@ export const calculateSafetyScore = (
 };
 
 // Get stats for dashboard
-export const getIssueStats = () => {
+export const getIssueStats = async () => {
+  const issues = await fetchIssuesFromAPI();
   return {
-    total: mockIssues.length,
-    critical: mockIssues.filter(i => i.status === 'critical').length,
-    inProgress: mockIssues.filter(i => i.status === 'in_progress').length,
-    resolved: mockIssues.filter(i => i.status === 'resolved').length,
-    potholes: mockIssues.filter(i => i.type === 'pothole').length,
-    streetlights: mockIssues.filter(i => i.type === 'streetlight').length,
-    policeBooths: mockIssues.filter(i => i.type === 'police_booth').length,
-    hospitals: mockIssues.filter(i => i.type === 'hospital').length,
+    total: issues.length,
+    critical: issues.filter(i => i.status === 'critical').length,
+    inProgress: issues.filter(i => i.status === 'in_progress').length,
+    resolved: issues.filter(i => i.status === 'resolved').length,
+    potholes: issues.filter(i => i.type === 'pothole').length,
+    streetlights: issues.filter(i => i.type === 'streetlight').length,
+    policeBooths: issues.filter(i => i.type === 'police_booth').length,
+    hospitals: issues.filter(i => i.type === 'hospital').length,
   };
 };
