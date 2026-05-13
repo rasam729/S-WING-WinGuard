@@ -5,6 +5,7 @@ import MapPage from './pages/MapPage';
 import AlertsPage from './pages/AlertsPage';
 import StatsPage from './pages/StatsPage';
 import ProfilePage from './pages/ProfilePage';
+import ReportIssuePage from './pages/ReportIssuePage';
 import './styles/index.css';
 
 // Protected Route Component
@@ -60,6 +61,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/report"
+            element={
+              <ProtectedRoute>
+                <ReportIssuePage />
               </ProtectedRoute>
             }
           />
