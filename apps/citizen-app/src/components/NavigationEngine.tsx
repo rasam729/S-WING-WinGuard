@@ -29,6 +29,13 @@ const NavigationEngine: React.FC<NavigationEngineProps> = ({
 }) => {
   const [startLocation, setStartLocation] = useState('');
   const [endLocation, setEndLocation] = useState('');
+  const [startSearch, setStartSearch] = useState('');
+  const [endSearch, setEndSearch] = useState('');
+  const [startResults, setStartResults] = useState<any[]>([]);
+  const [endResults, setEndResults] = useState<any[]>([]);
+  const [showStartResults, setShowStartResults] = useState(false);
+  const [showEndResults, setShowEndResults] = useState(false);
+  const [useCoordinates, setUseCoordinates] = useState(false);
   const [routes, setRoutes] = useState<RouteOption[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<RouteOption | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -36,20 +43,113 @@ const NavigationEngine: React.FC<NavigationEngineProps> = ({
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const speechSynthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (userLocation) {
       setStartLocation(`${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}`);
+      setStartSearch('Current Location');
     }
   }, [userLocation]);
 
-  // Text-to-Speech setup
+  // Location search with debounce
+  const searchLocation = async (query: string, isStart: boolean) => {
+    if (query.length < 3) {
+      if (isStart) setStartResults([]);
+      else setEndResults([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          query + ', Bengaluru, India'
+        )}&format=json&limit=5&addressdetails=1`
+      );
+      const data = await response.json();
+      
+      if (isStart) {
+        setStartResults(data);
+        setShowStartResults(true);
+      } else {
+        setEndResults(data);
+        setShowEndResults(true);
+      }
+    } catch (error) {
+      console.error('Location search error:', error);
+    }
+  };
+
+  const handleSearchInput = (value: string, isStart: boolean) => {
+    if (isStart) {
+      setStartSearch(value);
+    } else {
+      setEndSearch(value);
+    }
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Debounce search
+    searchTimeoutRef.current = setTimeout(() => {
+      searchLocation(value, isStart);
+    }, 500);
+  };
+
+  const selectLocation = (result: any, isStart: boolean) => {
+    const coords = `${parseFloat(result.lat).toFixed(4)}, ${parseFloat(result.lon).toFixed(4)}`;
+    
+    if (isStart) {
+      setStartLocation(coords);
+      setStartSearch(result.display_name.split(',')[0]);
+      setShowStartResults(false);
+    } else {
+      setEndLocation(coords);
+      setEndSearch(result.display_name.split(',')[0]);
+      setShowEndResults(false);
+    }
+  };
+
+  // Text-to-Speech setup with female voice
   useEffect(() => {
     if ('speechSynthesis' in window) {
       speechSynthRef.current = new SpeechSynthesisUtterance();
       speechSynthRef.current.rate = 0.9;
-      speechSynthRef.current.pitch = 1;
+      speechSynthRef.current.pitch = 1.1; // Slightly higher pitch for female voice
       speechSynthRef.current.volume = 1;
+      
+      // Wait for voices to load and select a female voice
+      const setFemaleVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        
+        // Try to find a female voice (prefer Google UK English Female, Microsoft Zira, or similar)
+        const femaleVoice = voices.find(voice => 
+          voice.name.toLowerCase().includes('female') ||
+          voice.name.toLowerCase().includes('zira') ||
+          voice.name.toLowerCase().includes('samantha') ||
+          voice.name.toLowerCase().includes('karen') ||
+          voice.name.toLowerCase().includes('victoria') ||
+          voice.name.toLowerCase().includes('google uk english female') ||
+          (voice.name.toLowerCase().includes('google') && voice.name.toLowerCase().includes('female'))
+        );
+        
+        if (femaleVoice) {
+          speechSynthRef.current!.voice = femaleVoice;
+          console.log('Selected female voice:', femaleVoice.name);
+        } else {
+          // Fallback: use any voice with higher pitch
+          console.log('No specific female voice found, using default with adjusted pitch');
+        }
+      };
+      
+      // Voices might not be loaded immediately
+      if (window.speechSynthesis.getVoices().length > 0) {
+        setFemaleVoice();
+      } else {
+        window.speechSynthesis.onvoiceschanged = setFemaleVoice;
+      }
     }
   }, []);
 
@@ -216,6 +316,7 @@ const NavigationEngine: React.FC<NavigationEngineProps> = ({
   const useCurrentLocation = () => {
     if (userLocation) {
       setStartLocation(`${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}`);
+      setStartSearch('Current Location');
     } else {
       alert('Please enable location services first!');
     }
@@ -254,19 +355,72 @@ const NavigationEngine: React.FC<NavigationEngineProps> = ({
             <>
               {/* Input Section */}
               <div className="space-y-4 mb-6">
+                {/* Toggle between Search and Coordinates */}
+                <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-xl">
+                  <span className="text-sm font-bold text-gray-700">Input Mode:</span>
+                  <button
+                    onClick={() => setUseCoordinates(!useCoordinates)}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-200 rounded-xl hover:border-cyan-500 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      {useCoordinates ? 'pin_drop' : 'search'}
+                    </span>
+                    <span className="text-sm font-bold">
+                      {useCoordinates ? 'Coordinates' : 'Search'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Starting Location */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                     <span className="material-symbols-outlined text-green-600">my_location</span>
                     Starting Location
                   </label>
                   <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={startLocation}
-                      onChange={(e) => setStartLocation(e.target.value)}
-                      placeholder="12.9716, 77.5946"
-                      className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all outline-none font-semibold text-sm"
-                    />
+                    {useCoordinates ? (
+                      <input
+                        type="text"
+                        value={startLocation}
+                        onChange={(e) => setStartLocation(e.target.value)}
+                        placeholder="12.9716, 77.5946"
+                        className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all outline-none font-semibold text-sm"
+                      />
+                    ) : (
+                      <div className="flex-1 relative">
+                        <input
+                          type="text"
+                          value={startSearch}
+                          onChange={(e) => handleSearchInput(e.target.value, true)}
+                          onFocus={() => startResults.length > 0 && setShowStartResults(true)}
+                          placeholder="Search for a location..."
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all outline-none font-semibold text-sm"
+                        />
+                        {showStartResults && startResults.length > 0 && (
+                          <div className="absolute z-10 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto">
+                            {startResults.map((result, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => selectLocation(result, true)}
+                                className="w-full text-left px-4 py-3 hover:bg-cyan-50 transition-colors border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="flex items-start gap-3">
+                                  <span className="material-symbols-outlined text-cyan-600 text-lg mt-0.5">location_on</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-gray-900 text-sm truncate">
+                                      {result.display_name.split(',')[0]}
+                                    </p>
+                                    <p className="text-xs text-gray-500 truncate">
+                                      {result.display_name}
+                                    </p>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <button
                       onClick={useCurrentLocation}
                       className="px-4 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all flex items-center gap-2"
@@ -277,18 +431,55 @@ const NavigationEngine: React.FC<NavigationEngineProps> = ({
                   </div>
                 </div>
 
+                {/* Destination */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                     <span className="material-symbols-outlined text-red-600">location_on</span>
                     Destination
                   </label>
-                  <input
-                    type="text"
-                    value={endLocation}
-                    onChange={(e) => setEndLocation(e.target.value)}
-                    placeholder="12.9350, 77.6200"
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all outline-none font-semibold text-sm"
-                  />
+                  {useCoordinates ? (
+                    <input
+                      type="text"
+                      value={endLocation}
+                      onChange={(e) => setEndLocation(e.target.value)}
+                      placeholder="12.9350, 77.6200"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all outline-none font-semibold text-sm"
+                    />
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={endSearch}
+                        onChange={(e) => handleSearchInput(e.target.value, false)}
+                        onFocus={() => endResults.length > 0 && setShowEndResults(true)}
+                        placeholder="Search for destination..."
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all outline-none font-semibold text-sm"
+                      />
+                      {showEndResults && endResults.length > 0 && (
+                        <div className="absolute z-10 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto">
+                          {endResults.map((result, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => selectLocation(result, false)}
+                              className="w-full text-left px-4 py-3 hover:bg-red-50 transition-colors border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="flex items-start gap-3">
+                                <span className="material-symbols-outlined text-red-600 text-lg mt-0.5">location_on</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-gray-900 text-sm truncate">
+                                    {result.display_name.split(',')[0]}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {result.display_name}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <button

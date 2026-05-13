@@ -153,6 +153,11 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
     setIsSubmitting(true);
 
     try {
+      // Check if token exists
+      if (!token) {
+        throw new Error('You must be logged in to submit a report. Please login first.');
+      }
+
       // Create FormData for multipart upload
       const submitData = new FormData();
       submitData.append('category', formData.category);
@@ -170,8 +175,17 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
         submitData.append('photo', photo);
       }
 
-      // Submit to backend
-      const response = await fetch('http://localhost:3000/api/reports', {
+      console.log('Submitting report with data:', {
+        category: formData.category,
+        severity: formData.criticalScore,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        hasPhoto: !!photo,
+        gpsExtracted
+      });
+
+      // Submit to backend (use relative URL to leverage proxy)
+      const response = await fetch('/api/reports', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -179,11 +193,12 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
         body: submitData
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to submit report');
-      }
+      const responseData = await response.json();
+      console.log('Server response:', responseData);
 
-      await response.json(); // Response received but not used
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Failed to submit report');
+      }
       
       // Show success message with integrated features
       alert('✅ Report submitted successfully!\n\n' +
@@ -191,7 +206,7 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
             `GPS: ${gpsExtracted ? '📍 Extracted from photo EXIF' : '📌 Manual entry'}\n` +
             `Location: ${formData.latitude.toFixed(4)}, ${formData.longitude.toFixed(4)}\n` +
             `Critical Score: ${formData.criticalScore}/10\n\n` +
-            '✨ Integrated Features Active:\n' +
+            '✨ Your report will appear on the dashboard map shortly!\n' +
             '✓ EXIF GPS Extraction\n' +
             '✓ Keyword Triage Auto-detection\n' +
             '✓ Database Integration\n' +
@@ -200,7 +215,8 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to submit report. Please check your connection.');
+      console.error('Report submission error:', err);
+      setError(err.message || 'Failed to submit report. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -230,9 +246,22 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Error Message */}
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-              <span className="material-symbols-outlined text-red-600">error</span>
-              <p className="text-sm text-red-800 font-medium">{error}</p>
+            <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl animate-shake">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-red-600 text-2xl">error</span>
+                <div className="flex-1">
+                  <p className="text-sm text-red-800 font-bold mb-1">Failed to Submit Report</p>
+                  <p className="text-sm text-red-700">{error}</p>
+                  {error.includes('login') && (
+                    <button
+                      onClick={() => window.location.href = '/auth'}
+                      className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition-colors"
+                    >
+                      Go to Login
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
