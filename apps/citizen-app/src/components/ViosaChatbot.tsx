@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { mockIssues, getIssuesNearLocation, getIssueStats, calculateSafetyScore } from '../store/issuesStore';
 import { generateRouteOptions, getRouteSummary, RouteOption } from '../utils/enhancedSafeRouteCalculator';
+import { VIOSA_KNOWLEDGE } from '../data/viosKnowledgeBase';
 
 interface Message {
   id: string;
@@ -52,11 +53,93 @@ const ViosaChatbot: React.FC<ViosaChatbotProps> = ({ isOpen, onClose, userLocati
     const lowerMessage = userMessage.toLowerCase();
     const stats = getIssueStats();
 
+    // How to submit report/complaint
+    if ((lowerMessage.includes('how') || lowerMessage.includes('submit')) && (lowerMessage.includes('report') || lowerMessage.includes('complaint') || lowerMessage.includes('issue'))) {
+      return {
+        text: VIOSA_KNOWLEDGE.SUBMIT_REPORT + `\n\nCurrent active issues in Bengaluru: ${stats.total}\nYour report helps make the city safer! 🛡️`
+      };
+    }
+
+    // Time to reach location
+    if (lowerMessage.includes('time') && (lowerMessage.includes('reach') || lowerMessage.includes('take') || lowerMessage.includes('eta'))) {
+      const coordMatch = userMessage.match(/(\d+\.\d+)[,\s]+(\d+\.\d+)/);
+      if (coordMatch && userLocation) {
+        const destLat = parseFloat(coordMatch[1]);
+        const destLng = parseFloat(coordMatch[2]);
+        
+        const routes = generateRouteOptions(
+          { lat: userLocation[0], lng: userLocation[1] },
+          { lat: destLat, lng: destLng }
+        );
+
+        const guardianRoute = routes.find(r => r.name === 'Guardian Path');
+        const fastestRoute = routes.reduce((prev, curr) => 
+          curr.estimatedTime < prev.estimatedTime ? curr : prev
+        );
+
+        return {
+          text: `⏱️ **Estimated Time to Reach (${destLat.toFixed(4)}, ${destLng.toFixed(4)})**
+
+**From Your Location:**
+📍 ${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}
+
+**Route Options:**
+
+🟢 **Guardian Path (Safest)**
+• Time: **${guardianRoute?.estimatedTime} minutes**
+• Distance: ${guardianRoute?.distance} km
+• Safety Score: ${guardianRoute?.safetyScore}/100
+• Avoids ${guardianRoute?.hazards.totalIssues} hazards
+
+🔵 **Fastest Route**
+• Time: **${fastestRoute.estimatedTime} minutes**
+• Distance: ${fastestRoute.distance} km
+• Safety Score: ${fastestRoute.safetyScore}/100
+• ${fastestRoute.hazards.totalIssues} hazards on route
+
+**Time Difference:** ${Math.abs((guardianRoute?.estimatedTime || 0) - fastestRoute.estimatedTime)} minutes
+
+**Factors Affecting Time:**
+• Traffic conditions (not included)
+• Road quality
+• Number of turns
+• Hazard avoidance
+
+**Want to navigate?**
+Say "start navigation" or click on a route below to begin!`,
+          routes
+        };
+      }
+
+      return {
+        text: `⏱️ **Calculate Travel Time**
+
+To estimate time to reach a location, I need:
+
+1. **Your current location** (✅ ${userLocation ? 'Enabled' : '❌ Not enabled'})
+2. **Destination coordinates**
+
+**Provide destination:**
+• Type coordinates: "12.9716, 77.5946"
+• Or say: "Time to reach MG Road"
+• Or use search bar to find location
+
+**I'll calculate:**
+• 🟢 Safest route time
+• 🔵 Fastest route time
+• 📍 Distance for each route
+• 🛡️ Safety scores
+• ⚠️ Hazards to avoid
+
+${!userLocation ? '\n📍 **Enable location first** by clicking the blue "My Location" button!' : '\nType destination coordinates now!'}`
+      };
+    }
+
     // Route finding with destination
     if (awaitingDestination || lowerMessage.includes('route') || lowerMessage.includes('navigate') || lowerMessage.includes('direction')) {
       if (!userLocation) {
         return {
-          text: `I need your current location to calculate routes. Please enable location services and click the "My Location" button on the map first! 📍`
+          text: VIOSA_KNOWLEDGE.FIND_SAFE_ROUTE.replace('Enable your location first, then I can help you navigate!', 'I need your current location to calculate routes. Please enable location services and click the "My Location" button on the map first! 📍')
         };
       }
 
@@ -78,7 +161,13 @@ ${routes.map((route, idx) => `**${idx + 1}. ${route.name}** ${route.color === '#
 ${getRouteSummary(route)}
 `).join('\n')}
 
-Click on any route below to view it on the map! The routes avoid ${stats.critical} critical hazards including potholes and broken streetlights.`,
+Click on any route below to view it on the map! The routes avoid ${stats.critical} critical hazards including potholes and broken streetlights.
+
+**To start navigation:**
+1. Click on your preferred route
+2. Route will appear on map
+3. Click "Start Navigation" for turn-by-turn directions
+4. Enable GPS tracking (green button) for real-time updates`,
           routes
         };
       }
@@ -87,13 +176,27 @@ Click on any route below to view it on the map! The routes avoid ${stats.critica
       return {
         text: `Great! I can calculate the safest route for you. 🗺️
 
-Please provide your destination in one of these formats:
-• Coordinates: "12.9716, 77.5946"
-• Or click on the map to set destination
-• Or describe the location: "MG Road", "Koramangala"
+**Your Current Location:**
+📍 ${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}
+Area safety score: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
 
-Current location: ${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}
-Area safety score: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100`
+**Provide Destination:**
+• **Coordinates**: "12.9716, 77.5946"
+• **Search**: Use the search bar to find a location
+• **Map Click**: Enable coordinate picker and click destination
+
+**What I'll Calculate:**
+🟢 Guardian Path - Safest (avoids ${stats.critical} hazards)
+🟠 Balanced Route - Safety + Speed
+🔵 Alternative - Fastest
+
+Each route includes:
+• Estimated time and distance
+• Safety score
+• Turn-by-turn directions
+• Real-time tracking support
+
+Type your destination or coordinates now!`
       };
     }
 
@@ -129,10 +232,17 @@ Would you like me to find a safe route avoiding these hazards?`
     }
 
     // Nearby hazards
-    if (lowerMessage.includes('nearby') || lowerMessage.includes('alert') || lowerMessage.includes('around') || lowerMessage.includes('hazard')) {
+    if (lowerMessage.includes('nearby') || lowerMessage.includes('alert') || lowerMessage.includes('around') || lowerMessage.includes('hazard') || lowerMessage.includes('track')) {
       if (!userLocation) {
         return {
-          text: `Please enable location services to see nearby hazards! 📍`
+          text: VIOSA_KNOWLEDGE.TRACK_HAZARDS + `\n\n**Current City-wide Stats:**
+• Total Issues: ${stats.total}
+• Critical: ${stats.critical} 🔴
+• Potholes: ${stats.potholes}
+• Broken Streetlights: ${stats.streetlights}
+• Police Booths: ${stats.policeBooths}
+
+Enable location to see hazards in your area! 📍`
         };
       }
 
@@ -144,9 +254,28 @@ Would you like me to find a safe route avoiding these hazards?`
         return {
           text: `🎉 **Great news!** No active hazards within 2km of your location!
 
-Your area safety score: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
+**Your Area Status:**
+📍 Location: ${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}
+🛡️ Safety Score: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
+✅ Status: Safe for travel
 
-The roads are clear and safe for travel. Have a safe journey! 🚗`
+**How to Stay Updated:**
+• Hazards are tracked in real-time
+• Map updates automatically via WebSocket
+• Check before each journey
+• Enable GPS tracking during navigation
+
+**City-wide Overview:**
+• Total Active Issues: ${stats.total - stats.resolved}
+• Critical Hazards: ${stats.critical}
+• In Progress Fixes: ${stats.inProgress}
+
+The roads are clear and safe for travel. Have a safe journey! 🚗
+
+**Want to:**
+• Find a safe route? Say "navigate to [destination]"
+• Check another area? Use the search bar
+• Report a new issue? Click "Report Issue"`
         };
       }
 
@@ -154,22 +283,34 @@ The roads are clear and safe for travel. Have a safe journey! 🚗`
         text: `⚠️ **Hazards Near You** (within 2km)
 
 **Summary:**
+📍 Your Location: ${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}
+🛡️ Area Safety: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
 • Total: ${activeIssues.length} active issues
 • Critical: ${criticalIssues.length} 🔴
 • In Progress: ${activeIssues.filter(i => i.status === 'in_progress').length} 🔵
 
-**Details:**
+**Detailed Hazards:**
 ${activeIssues.slice(0, 5).map((issue, idx) => {
   const dist = Math.round(calculateDistance({ lat: userLocation[0], lng: userLocation[1] }, { lat: issue.latitude, lng: issue.longitude }) * 1000);
   const statusEmoji = issue.status === 'critical' ? '🔴' : '🔵';
   return `${idx + 1}. ${statusEmoji} **${issue.type.replace('_', ' ').toUpperCase()}** (${dist}m away)
-   ${issue.description}
-   Severity: ${issue.severity}/10`;
+   📝 ${issue.description}
+   ⚠️ Severity: ${issue.severity}/10
+   📍 ${issue.latitude.toFixed(4)}, ${issue.longitude.toFixed(4)}`;
 }).join('\n\n')}
 
 ${activeIssues.length > 5 ? `\n...and ${activeIssues.length - 5} more issues.` : ''}
 
-💡 **Recommendation:** Use "Safe Route" mode when navigating to avoid these hazards!
+**💡 Recommendations:**
+✅ Use "Guardian Path" mode when navigating
+✅ Avoid areas with critical hazards (🔴)
+✅ Check map before traveling
+✅ Enable real-time tracking during navigation
+
+**Actions:**
+• "Find safe route to [destination]" - Navigate avoiding these hazards
+• "Show on map" - View hazards visually
+• "Report new issue" - Submit a complaint
 
 Would you like me to calculate a safe route for you?`
       };
