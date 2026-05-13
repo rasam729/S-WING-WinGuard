@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -55,6 +55,18 @@ const createGlowingIcon = (icon: string, status: 'critical' | 'in_progress' | 'r
   });
 };
 
+interface CitizenReport {
+  report_id: number;
+  category: string;
+  severity: number;
+  description: string;
+  latitude: number;
+  longitude: number;
+  status: string;
+  created_at: string;
+  photo_url?: string;
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
@@ -65,6 +77,30 @@ export default function DashboardPage() {
   const [simulationMode, setSimulationMode] = useState<'install' | null>(null);
   const [installType, setInstallType] = useState<'streetlight' | 'police_booth' | null>(null);
   const [clickedLocation, setClickedLocation] = useState<[number, number] | null>(null);
+  const [citizenReports, setCitizenReports] = useState<CitizenReport[]>([]);
+  const [loadingReports, setLoadingReports] = useState(true);
+
+  // Fetch citizen reports from API
+  useEffect(() => {
+    fetchCitizenReports();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchCitizenReports, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchCitizenReports = async () => {
+    try {
+      const response = await fetch('/api/reports/all');
+      const data = await response.json();
+      if (data.success && data.data && data.data.reports) {
+        setCitizenReports(data.data.reports);
+      }
+    } catch (error) {
+      console.error('Error fetching citizen reports:', error);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
 
   // Default center (Bengaluru, India)
   const mapCenter: [number, number] = [12.9716, 77.5946];
@@ -157,11 +193,18 @@ export default function DashboardPage() {
   const getIconForType = (type: string) => {
     switch (type) {
       case 'pothole':
+      case 'Pothole':
+      case 'Road Crack':
         return '⚠️';
       case 'streetlight':
+      case 'Streetlight':
         return '💡';
       case 'police_booth':
+      case 'Police Booth':
         return '🚔';
+      case 'hospital':
+      case 'Hospital':
+        return '🏥';
       default:
         return '📍';
     }
@@ -489,6 +532,49 @@ export default function DashboardPage() {
                             <span className="text-xs font-bold">Issue Resolved</span>
                           </div>
                         )}
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+                
+                {/* Render citizen reports as markers */}
+                {citizenReports.map((report) => (
+                  <Marker
+                    key={`report-${report.report_id}`}
+                    position={[report.latitude, report.longitude]}
+                    icon={createGlowingIcon(getIconForType(report.category), report.status.toLowerCase() === 'resolved' ? 'resolved' : 'critical')}
+                  >
+                    <Popup>
+                      <div className="text-sm min-w-[250px]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-2xl">{getIconForType(report.category)}</span>
+                          <div>
+                            <p className="font-bold text-gray-900">{report.category}</p>
+                            <span className="text-xs font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                              Citizen Report
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-gray-700 mb-2">{report.description}</p>
+                        <p className="text-xs text-gray-500 mb-2">Severity: {report.severity}/10</p>
+                        <p className="text-xs text-gray-500 mb-3">
+                          Reported {new Date(report.created_at).toLocaleString()}
+                        </p>
+                        
+                        {report.photo_url && (
+                          <img 
+                            src={report.photo_url} 
+                            alt="Report" 
+                            className="w-full h-32 object-cover rounded-lg mb-3"
+                          />
+                        )}
+                        
+                        <button
+                          onClick={() => navigate('/reports')}
+                          className="w-full px-3 py-2 bg-teal-600 text-white rounded-lg text-xs font-bold hover:bg-teal-700 transition-all"
+                        >
+                          View Full Report
+                        </button>
                       </div>
                     </Popup>
                   </Marker>

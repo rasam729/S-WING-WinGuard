@@ -65,6 +65,7 @@ router.get('/notifications', async (req: Request, res: Response) => {
 
 /**
  * PATCH /api/notifications/:id/read
+ * PUT /api/notifications/:id/read (alias for compatibility)
  * Mark notification as read
  */
 router.patch('/notifications/:id/read', async (req: Request, res: Response) => {
@@ -93,6 +94,103 @@ router.patch('/notifications/:id/read', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to mark notification as read',
+      message: error.message
+    });
+  }
+});
+
+// Alias for PUT method
+router.put('/notifications/:id/read', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(
+      'UPDATE notifications SET read_at = NOW() WHERE notification_id = $1 RETURNING *',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Notification not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Notification marked as read',
+      data: result.rows[0]
+    });
+  } catch (error: any) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to mark notification as read',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/notifications
+ * Create a new notification
+ */
+router.post('/notifications', async (req: Request, res: Response) => {
+  try {
+    const { user_id, report_id, message, type } = req.body;
+    
+    const result = await pool.query(
+      `INSERT INTO notifications (user_id, report_id, message, type, sent_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       RETURNING *`,
+      [user_id, report_id || null, message, type || 'info']
+    );
+    
+    res.json({
+      success: true,
+      message: 'Notification created',
+      data: result.rows[0]
+    });
+  } catch (error: any) {
+    console.error('Error creating notification:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create notification',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/notifications/:id
+ * Delete a notification
+ */
+router.delete('/notifications/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(
+      'DELETE FROM notifications WHERE notification_id = $1 RETURNING *',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Notification not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Notification deleted',
+      data: result.rows[0]
+    });
+  } catch (error: any) {
+    console.error('Error deleting notification:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete notification',
       message: error.message
     });
   }

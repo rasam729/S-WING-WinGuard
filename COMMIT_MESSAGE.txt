@@ -1,0 +1,41 @@
+feat: Complete citizen reports integration and notifications system
+
+✅ Implemented Features:
+- Citizen reports now display on dashboard map with purple badges
+- Reports appear on Reports and Issues pages
+- Viosa chatbot button moved to floating position on map
+- Real-time notifications system for resolved issues
+- Alerts page integrated with backend API
+- Mark as read/delete notifications functionality
+
+🔧 Technical Changes:
+- Updated DashboardPage to fetch citizen reports every 30s
+- Added citizen report markers with glowing effects
+- Moved Viosa button to map corner with bot icon
+- Integrated AlertsPage with /api/notifications endpoints
+- Added PUT, POST, DELETE support to notifications routes
+- Created notifications table SQL schema
+
+📁 Files Modified:
+- apps/citizen-app/src/pages/AlertsPage.tsx
+- server/src/routes/notificationsRoutes.ts
+
+📁 Files Created:
+- add-notifications-table.sql
+- IMPLEMENTATION_SUMMARY.md
+- QUICK_SETUP_GUIDE.md
+- USER_ACTION_REQUIRED.md
+- COMMIT_MESSAGE.txt
+
+🎯 User Action Required:
+- Run add-notifications-table.sql on Neon database
+
+🔗 Connected to Real Data:
+- Infrastructure counts from database
+- Active/resolved issues from database
+- Citizen reports from database
+- Safety scores use real data
+- Budget calculator uses real costs
+
+📊 Status: Ready for Testing
+All requested features implemented and services running.

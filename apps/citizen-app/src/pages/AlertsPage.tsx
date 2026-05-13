@@ -1,86 +1,111 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface Alert {
-  id: number;
-  title: string;
+  notification_id: number;
+  user_id: number;
   message: string;
   type: 'info' | 'warning' | 'success' | 'danger';
-  timestamp: string;
-  read: boolean;
-  location?: string;
+  sent_at: string;
+  read_at: string | null;
 }
 
 const AlertsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [alerts, setAlerts] = useState<Alert[]>([
-    {
-      id: 1,
-      title: 'Report Status Updated',
-      message: 'Your report about pothole on MG Road has been marked as "In Progress"',
-      type: 'info',
-      timestamp: '2 hours ago',
-      read: false,
-      location: 'MG Road, Bengaluru'
-    },
-    {
-      id: 2,
-      title: 'Issue Resolved',
-      message: 'The streetlight issue you reported on 5th Cross has been fixed!',
-      type: 'success',
-      timestamp: '1 day ago',
-      read: false,
-      location: '5th Cross, Indiranagar'
-    },
-    {
-      id: 3,
-      title: 'Safety Alert',
-      message: 'High crime activity reported near your saved route. Consider alternative path.',
-      type: 'warning',
-      timestamp: '2 days ago',
-      read: true,
-      location: 'Koramangala'
-    },
-    {
-      id: 4,
-      title: 'Critical Alert',
-      message: 'Road closure on Outer Ring Road due to emergency repairs. Avoid this route.',
-      type: 'danger',
-      timestamp: '3 days ago',
-      read: true,
-      location: 'Outer Ring Road'
-    },
-    {
-      id: 5,
-      title: 'New Feature',
-      message: 'AI-powered route suggestions now available! Check out the route planner.',
-      type: 'info',
-      timestamp: '5 days ago',
-      read: true
-    }
-  ]);
-
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
-  const markAsRead = (id: number) => {
-    setAlerts(alerts.map(alert => 
-      alert.id === id ? { ...alert, read: true } : alert
-    ));
+  // Fetch notifications from API
+  useEffect(() => {
+    fetchNotifications();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/notifications');
+      const data = await response.json();
+      if (data.success) {
+        setAlerts(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const markAllAsRead = () => {
-    setAlerts(alerts.map(alert => ({ ...alert, read: true })));
+  const markAsRead = async (id: number) => {
+    try {
+      await fetch(`http://localhost:3000/api/notifications/${id}/read`, {
+        method: 'PUT'
+      });
+      setAlerts(alerts.map(alert => 
+        alert.notification_id === id ? { ...alert, read_at: new Date().toISOString() } : alert
+      ));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
-  const deleteAlert = (id: number) => {
-    setAlerts(alerts.filter(alert => alert.id !== id));
+  const markAllAsRead = async () => {
+    try {
+      // Mark all unread notifications as read
+      const unreadAlerts = alerts.filter(a => !a.read_at);
+      await Promise.all(
+        unreadAlerts.map(alert =>
+          fetch(`http://localhost:3000/api/notifications/${alert.notification_id}/read`, {
+            method: 'PUT'
+          })
+        )
+      );
+      setAlerts(alerts.map(alert => ({ ...alert, read_at: new Date().toISOString() })));
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
+  const deleteAlert = async (id: number) => {
+    try {
+      await fetch(`http://localhost:3000/api/notifications/${id}`, {
+        method: 'DELETE'
+      });
+      setAlerts(alerts.filter(alert => alert.notification_id !== id));
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
   };
 
   const filteredAlerts = filter === 'unread' 
-    ? alerts.filter(a => !a.read) 
+    ? alerts.filter(a => !a.read_at) 
     : alerts;
 
-  const unreadCount = alerts.filter(a => !a.read).length;
+  const unreadCount = alerts.filter(a => !a.read_at).length;
+
+  const getRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  };
+
+  const getAlertTitle = (message: string, type: string) => {
+    if (type === 'success') return 'Issue Resolved';
+    if (type === 'info') return 'Status Update';
+    if (type === 'warning') return 'Safety Alert';
+    if (type === 'danger') return 'Critical Alert';
+    return 'Notification';
+  };
 
   const getAlertIcon = (type: string) => {
     switch (type) {
@@ -183,7 +208,11 @@ const AlertsPage: React.FC = () => {
 
         {/* Alerts List */}
         <div className="space-y-4">
-          {filteredAlerts.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-12 h-12 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : filteredAlerts.length === 0 ? (
             <div className="bg-white rounded-3xl shadow-lg p-12 text-center border-2 border-gray-200">
               <div className="w-24 h-24 bg-gradient-to-br from-cyan-100 to-teal-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="material-symbols-outlined text-cyan-600 text-5xl">notifications_off</span>
@@ -194,9 +223,9 @@ const AlertsPage: React.FC = () => {
           ) : (
             filteredAlerts.map((alert) => (
               <div
-                key={alert.id}
+                key={alert.notification_id}
                 className={`bg-white rounded-2xl shadow-lg border-2 overflow-hidden transition-all hover:shadow-xl ${
-                  alert.read ? 'opacity-75' : ''
+                  alert.read_at ? 'opacity-75' : ''
                 }`}
               >
                 <div className="flex">
@@ -216,30 +245,23 @@ const AlertsPage: React.FC = () => {
                       {/* Text Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4 mb-2">
-                          <h3 className="text-xl font-bold text-gray-900 font-display">{alert.title}</h3>
-                          {!alert.read && (
+                          <h3 className="text-xl font-bold text-gray-900 font-display">{getAlertTitle(alert.message, alert.type)}</h3>
+                          {!alert.read_at && (
                             <span className="w-3 h-3 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex-shrink-0 animate-pulse" />
                           )}
                         </div>
                         <p className="text-gray-700 mb-3 leading-relaxed">{alert.message}</p>
-                        
-                        {alert.location && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
-                            <span className="material-symbols-outlined text-lg">location_on</span>
-                            <span className="font-medium">{alert.location}</span>
-                          </div>
-                        )}
 
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-500 font-medium flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm">schedule</span>
-                            {alert.timestamp}
+                            {getRelativeTime(alert.sent_at)}
                           </span>
 
                           <div className="flex items-center gap-2">
-                            {!alert.read && (
+                            {!alert.read_at && (
                               <button
-                                onClick={() => markAsRead(alert.id)}
+                                onClick={() => markAsRead(alert.notification_id)}
                                 className="px-4 py-2 bg-cyan-50 text-cyan-600 rounded-xl font-bold text-sm hover:bg-cyan-100 transition-colors flex items-center gap-1"
                               >
                                 <span className="material-symbols-outlined text-sm">done</span>
@@ -247,7 +269,7 @@ const AlertsPage: React.FC = () => {
                               </button>
                             )}
                             <button
-                              onClick={() => deleteAlert(alert.id)}
+                              onClick={() => deleteAlert(alert.notification_id)}
                               className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                             >
                               <span className="material-symbols-outlined text-lg">delete</span>
