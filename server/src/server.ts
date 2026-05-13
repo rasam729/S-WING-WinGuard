@@ -32,6 +32,7 @@ import authRoutes from './routes/authRoutes';
 import mapRoutes from './routes/mapRoutes';
 import reportsRoutes, { setSocketIO } from './routes/reportsRoutes';
 import enhancedReportsRoutes from './routes/enhancedReportsRoutes';
+import reportsPostgres from './routes/reportsPostgres';
 import routesRoutes from './routes/routesRoutes';
 import budgetRoutes from './routes/budgetRoutes';
 import routeRoutes from './routes/routeRoutes';
@@ -42,7 +43,7 @@ const app: Application = express();
 const httpServer = createServer(app);
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173', 'http://localhost:5174'],
+    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -54,7 +55,7 @@ const io = new SocketIOServer(httpServer, {
 app.use(helmet());
 app.use(compression());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173', 'http://localhost:5174'],
+  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
   credentials: true
 }));
 app.use(express.json());
@@ -72,8 +73,7 @@ app.get('/health', (_req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/map', mapRoutes);
-app.use('/api', reportsRoutes);
-app.use('/api/reports', enhancedReportsRoutes);
+app.use('/api/reports', reportsPostgres); // PostgreSQL-based reports
 app.use('/api/routes', routesRoutes);
 app.use('/api', budgetRoutes);
 app.use('/api/routes', routeRoutes);
@@ -96,7 +96,6 @@ app.use(errorHandler);
 
 // Initialize Socket.IO
 initializeSocketIO(io);
-setSocketIO(io);
 
 // Start Server
 const PORT = process.env.PORT || 3000;
