@@ -38,7 +38,7 @@ const ProfilePage: React.FC = () => {
                 <span className="material-symbols-outlined text-gray-700">arrow_back</span>
               </button>
               <div>
-                <h1 className="text-2xl font-black">
+                <h1 className="text-3xl font-black font-display">
                   <span className="bg-gradient-to-r from-cyan-500 to-teal-600 bg-clip-text text-transparent">Profile</span>
                 </h1>
                 <p className="text-sm text-gray-600 font-medium">Manage your account</p>
@@ -69,7 +69,7 @@ const ProfilePage: React.FC = () => {
               {user?.fullName?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div>
-              <h2 className="text-3xl font-black mb-2">{user?.fullName || 'User'}</h2>
+              <h2 className="text-4xl font-black mb-2 font-display">{user?.fullName || 'User'}</h2>
               <p className="text-cyan-100 font-semibold mb-1">{user?.email}</p>
               <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full w-fit">
                 <span className="material-symbols-outlined text-sm">verified</span>
@@ -81,7 +81,7 @@ const ProfilePage: React.FC = () => {
 
         {/* Profile Form */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border-2 border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2 font-display">
             <span className="material-symbols-outlined text-cyan-600">person</span>
             Personal Information
           </h3>
@@ -146,7 +146,7 @@ const ProfilePage: React.FC = () => {
 
         {/* Settings */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border-2 border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2 font-display">
             <span className="material-symbols-outlined text-orange-600">settings</span>
             Settings
           </h3>

@@ -82,7 +82,7 @@ const AuthPage: React.FC = () => {
                 className="h-24 w-auto drop-shadow-2xl relative z-10"
               />
             </div>
-            <h1 className="text-5xl font-black mb-3 tracking-tight">
+            <h1 className="text-5xl font-black mb-3 tracking-tight font-display">
               <span className="bg-gradient-to-r from-cyan-400 via-teal-400 to-cyan-500 bg-clip-text text-transparent">Win</span>
               <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent">Guard</span>
             </h1>

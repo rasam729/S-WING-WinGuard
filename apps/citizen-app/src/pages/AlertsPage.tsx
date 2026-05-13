@@ -122,7 +122,7 @@ const AlertsPage: React.FC = () => {
                 <span className="material-symbols-outlined text-gray-700">arrow_back</span>
               </button>
               <div>
-                <h1 className="text-2xl font-black">
+                <h1 className="text-3xl font-black font-display">
                   <span className="bg-gradient-to-r from-cyan-500 to-teal-600 bg-clip-text text-transparent">Alerts</span>
                 </h1>
                 <p className="text-sm text-gray-600 font-medium">Stay updated on your reports</p>
@@ -188,7 +188,7 @@ const AlertsPage: React.FC = () => {
               <div className="w-24 h-24 bg-gradient-to-br from-cyan-100 to-teal-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="material-symbols-outlined text-cyan-600 text-5xl">notifications_off</span>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">No Alerts</h3>
+              <h3 className="text-3xl font-bold text-gray-900 mb-2 font-display">No Alerts</h3>
               <p className="text-gray-600">You're all caught up! No new alerts at the moment.</p>
             </div>
           ) : (
@@ -216,7 +216,7 @@ const AlertsPage: React.FC = () => {
                       {/* Text Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4 mb-2">
-                          <h3 className="text-lg font-bold text-gray-900">{alert.title}</h3>
+                          <h3 className="text-xl font-bold text-gray-900 font-display">{alert.title}</h3>
                           {!alert.read && (
                             <span className="w-3 h-3 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex-shrink-0 animate-pulse" />
                           )}

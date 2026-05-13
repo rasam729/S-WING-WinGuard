@@ -126,7 +126,7 @@ const StatsPage: React.FC = () => {
                 <span className="material-symbols-outlined text-gray-700">arrow_back</span>
               </button>
               <div>
-                <h1 className="text-2xl font-black">
+                <h1 className="text-3xl font-black font-display">
                   <span className="bg-gradient-to-r from-cyan-500 to-teal-600 bg-clip-text text-transparent">Your Stats</span>
                 </h1>
                 <p className="text-sm text-gray-600 font-medium">Track your safety contributions</p>
@@ -159,8 +159,8 @@ const StatsPage: React.FC = () => {
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <p className="text-cyan-100 font-semibold mb-2">Your Impact Score</p>
-                <h2 className="text-6xl font-black">{stats.impactScore}</h2>
+                <p className="text-cyan-100 font-semibold mb-2 font-display">Your Impact Score</p>
+                <h2 className="text-7xl font-black font-display">{stats.impactScore}</h2>
               </div>
               <div className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
                 <span className="material-symbols-outlined text-6xl" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -243,7 +243,7 @@ const StatsPage: React.FC = () => {
 
         {/* Progress Chart */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border-2 border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2 font-display">
             <span className="material-symbols-outlined text-cyan-600">trending_up</span>
             Report Resolution Progress
           </h3>
@@ -279,7 +279,7 @@ const StatsPage: React.FC = () => {
 
         {/* Recent Activity */}
         <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2 font-display">
             <span className="material-symbols-outlined text-orange-600">history</span>
             Recent Activity
           </h3>
