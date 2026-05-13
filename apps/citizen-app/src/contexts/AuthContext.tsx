@@ -46,6 +46,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ email, password })
       });
 
+      // Check if response is actually JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server is not responding correctly. Please check if the backend is running.');
+      }
+
       const data = await response.json();
 
       if (!data.success) {
@@ -58,8 +64,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(userToken);
       localStorage.setItem('winguard_token', userToken);
       localStorage.setItem('winguard_user', JSON.stringify(userData));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      // Provide a user-friendly error message
+      if (error.message.includes('JSON')) {
+        throw new Error('Backend server is not running or not responding correctly');
+      }
       throw error;
     }
   };
@@ -71,6 +81,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, fullName, phone })
       });
+
+      // Check if response is actually JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server is not responding correctly. Please check if the backend is running.');
+      }
 
       const data = await response.json();
 
@@ -84,8 +100,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(userToken);
       localStorage.setItem('winguard_token', userToken);
       localStorage.setItem('winguard_user', JSON.stringify(userData));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
+      // Provide a user-friendly error message
+      if (error.message.includes('JSON')) {
+        throw new Error('Backend server is not running or not responding correctly');
+      }
       throw error;
     }
   };
