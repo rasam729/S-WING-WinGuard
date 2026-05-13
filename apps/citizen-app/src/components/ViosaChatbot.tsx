@@ -340,18 +340,26 @@ What would you like to know?`
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-end justify-end p-6 pointer-events-none">
-      <div className="w-full max-w-md h-[600px] bg-surface rounded-3xl shadow-2xl pointer-events-auto flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 p-6 text-white">
+    <div className="fixed inset-0 z-[1100] flex items-end justify-end p-4 md:p-6 pointer-events-none">
+      <div className="w-full max-w-md h-[85vh] md:h-[600px] bg-white rounded-3xl shadow-2xl pointer-events-auto flex flex-col overflow-hidden border border-gray-200">
+        {/* Header with WinGuard branding */}
+        <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 p-4 md:p-6 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center">
-                <span className="material-symbols-outlined text-3xl">smart_toy</span>
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg">
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
               </div>
               <div>
-                <h2 className="text-xl font-bold">Viosa</h2>
-                <p className="text-sm opacity-90">AI Safety Assistant</p>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  Viosa
+                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">AI</span>
+                </h2>
+                <p className="text-xs opacity-90">
+                  <span className="text-cyan-200">Win</span>
+                  <span className="text-orange-200">Guard</span> Safety Assistant
+                </p>
               </div>
             </div>
             <button
@@ -364,7 +372,7 @@ What would you like to know?`
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-surface-container-low">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50 to-white">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -373,12 +381,12 @@ What would you like to know?`
               <div
                 className={`max-w-[80%] rounded-2xl p-4 ${
                   message.sender === 'user'
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                    : 'bg-surface shadow-md text-on-surface'
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                    : 'bg-white shadow-md text-gray-800 border border-gray-200'
                 }`}
               >
-                <p className="text-sm whitespace-pre-line">{message.text}</p>
-                <p className={`text-xs mt-2 ${message.sender === 'user' ? 'text-white/70' : 'text-on-surface-variant'}`}>
+                <p className="text-sm whitespace-pre-line leading-relaxed">{message.text}</p>
+                <p className={`text-xs mt-2 ${message.sender === 'user' ? 'text-white/70' : 'text-gray-500'}`}>
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
                 
@@ -431,7 +439,7 @@ What would you like to know?`
           {/* Typing indicator */}
           {isTyping && (
             <div className="flex justify-start">
-              <div className="bg-surface shadow-md rounded-2xl p-4">
+              <div className="bg-white shadow-md rounded-2xl p-4 border border-gray-200">
                 <div className="flex gap-1">
                   <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                   <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -445,7 +453,7 @@ What would you like to know?`
         </div>
 
         {/* Input */}
-        <div className="p-4 bg-surface border-t border-outline-variant/20">
+        <div className="p-4 bg-white border-t border-gray-200">
           <div className="flex gap-2">
             <input
               type="text"
@@ -453,7 +461,7 @@ What would you like to know?`
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
               placeholder="Ask Viosa anything..."
-              className="flex-1 px-4 py-3 rounded-full border border-outline-variant bg-surface-container focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="flex-1 px-4 py-3 rounded-full border-2 border-gray-200 bg-gray-50 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:bg-white transition-all outline-none"
             />
             <button
               onClick={() => handleSendMessage()}
