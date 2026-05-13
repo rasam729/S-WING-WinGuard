@@ -40,19 +40,26 @@ const AuthPage: React.FC = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Background Pattern with Overlay */}
+      {/* Dark Background with Cyan-Green and Orange */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-teal-900 to-orange-900"></div>
+      
+      {/* Geometric Pattern Overlay */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        className="absolute inset-0 opacity-10"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600'%3E%3Crect fill='%23f0f4f8' width='1000' height='600'/%3E%3Cpath d='M0 300 Q 100 250 200 300 T 400 300 T 600 300 T 800 300 T 1000 300' stroke='%23cbd5e1' stroke-width='40' fill='none' stroke-dasharray='20,10'/%3E%3Cpath d='M0 350 Q 100 300 200 350 T 400 350 T 600 350 T 800 350 T 1000 350' stroke='%23cbd5e1' stroke-width='40' fill='none' stroke-dasharray='20,10'/%3E%3Ccircle cx='150' cy='200' r='30' fill='%2310b981' opacity='0.3'/%3E%3Ccircle cx='400' cy='150' r='25' fill='%233b82f6' opacity='0.3'/%3E%3Ccircle cx='650' cy='180' r='28' fill='%23f59e0b' opacity='0.3'/%3E%3Ccircle cx='850' cy='220' r='32' fill='%23ef4444' opacity='0.3'/%3E%3Crect x='100' y='400' width='60' height='80' fill='%23fb923c' opacity='0.2'/%3E%3Crect x='300' y='420' width='50' height='70' fill='%2360a5fa' opacity='0.2'/%3E%3Crect x='500' y='410' width='55' height='75' fill='%2334d399' opacity='0.2'/%3E%3Cpolygon points='200,450 220,480 180,480' fill='%2322c55e' opacity='0.3'/%3E%3Cpolygon points='450,430 470,460 430,460' fill='%2322c55e' opacity='0.3'/%3E%3Cpolygon points='700,440 720,470 680,470' fill='%2322c55e' opacity='0.3'/%3E%3C/svg%3E")`
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-50/95 via-white/90 to-orange-50/95 backdrop-blur-sm" />
+
+      {/* Animated Gradient Orbs */}
+      <div className="absolute top-20 left-20 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+      <div className="absolute top-40 right-20 w-96 h-96 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+      <div className="absolute -bottom-20 left-1/2 w-96 h-96 bg-orange-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
 
       {/* Floating Road Elements */}
       <div className="absolute top-20 left-10 w-32 h-32 opacity-10 animate-float">
         <svg viewBox="0 0 100 100" className="w-full h-full">
-          <path d="M10 50 Q 30 30 50 50 T 90 50" stroke="#0891b2" strokeWidth="8" fill="none" strokeDasharray="5,5"/>
+          <path d="M10 50 Q 30 30 50 50 T 90 50" stroke="#14b8a6" strokeWidth="8" fill="none" strokeDasharray="5,5"/>
         </svg>
       </div>
       <div className="absolute bottom-20 right-10 w-40 h-40 opacity-10 animate-float-delayed">
@@ -67,23 +74,24 @@ const AuthPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Logo and Header */}
           <div className="text-center mb-8 animate-fade-in">
-            <div className="inline-flex items-center justify-center mb-6 transform hover:scale-105 transition-transform">
+            <div className="inline-flex items-center justify-center mb-6 transform hover:scale-105 transition-transform relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 to-orange-400 rounded-full blur-2xl opacity-30 animate-pulse"></div>
               <img 
                 src="/WinGuard_Logo.png" 
                 alt="WinGuard Logo" 
-                className="h-24 w-auto drop-shadow-2xl"
+                className="h-24 w-auto drop-shadow-2xl relative z-10"
               />
             </div>
             <h1 className="text-5xl font-black mb-3 tracking-tight">
-              <span className="bg-gradient-to-r from-cyan-500 via-teal-500 to-cyan-600 bg-clip-text text-transparent">Win</span>
-              <span className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 bg-clip-text text-transparent">Guard</span>
+              <span className="bg-gradient-to-r from-cyan-400 via-teal-400 to-cyan-500 bg-clip-text text-transparent">Win</span>
+              <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent">Guard</span>
             </h1>
-            <p className="text-gray-600 font-semibold text-lg">
+            <p className="text-cyan-100 font-semibold text-lg">
               {isLogin ? '🛡️ Welcome back, Guardian!' : '🚀 Join the Safety Revolution'}
             </p>
             <div className="flex items-center justify-center gap-2 mt-3">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-xs text-gray-500 font-medium">Bengaluru Safe Routes Active</span>
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+              <span className="text-xs text-cyan-200 font-medium">Bengaluru Safe Routes Active</span>
             </div>
           </div>
 
@@ -353,6 +361,20 @@ const AuthPage: React.FC = () => {
 
       {/* Custom Animations */}
       <style>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
           50% { transform: translateY(-20px) rotate(5deg); }
