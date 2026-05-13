@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import ExifReader from 'exifreader';
 
 interface EnhancedReportFormProps {
   isOpen: boolean;
@@ -30,10 +31,103 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [gpsExtracted, setGpsExtracted] = useState(false);
+  const [gpsCoordinates, setGpsCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [aiAnalysis, setAiAnalysis] = useState<string>('');
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ===== KEYWORD TRIAGE MAPPING =====
+  const KEYWORD_TO_CATEGORY: Record<string, string> = {
+    'pothole': 'Pothole',
+    'potholes': 'Pothole',
+    'hole': 'Pothole',
+    'crater': 'Pothole',
+    'streetlight': 'Streetlight',
+    'street light': 'Streetlight',
+    'light': 'Streetlight',
+    'lamp': 'Streetlight',
+    'lighting': 'Streetlight',
+    'broken light': 'Streetlight',
+    'crack': 'Road Damage',
+    'cracks': 'Road Damage',
+    'damage': 'Road Damage',
+    'damaged': 'Road Damage',
+    'crime': 'Crime',
+    'theft': 'Crime',
+    'assault': 'Crime',
+    'dark': 'Dark Alley',
+    'alley': 'Dark Alley',
+    'unsafe': 'Crime'
+  };
+
+  // ===== KEYWORD TRIAGE FUNCTION =====
+  const triageByKeywords = (text: string): string | null => {
+    const words = text.toLowerCase().split(/\s+/);
+    
+    for (const word of words) {
+      if (KEYWORD_TO_CATEGORY[word]) {
+        return KEYWORD_TO_CATEGORY[word];
+      }
+    }
+    
+    // Check for partial matches
+    for (const [keyword, category] of Object.entries(KEYWORD_TO_CATEGORY)) {
+      if (text.toLowerCase().includes(keyword)) {
+        return category;
+      }
+    }
+    
+    return null;
+  };
+
+  // ===== AUTO-DETECT CATEGORY FROM DESCRIPTION =====
+  useEffect(() => {
+    if (formData.description) {
+      const detectedCategory = triageByKeywords(formData.description);
+      if (detectedCategory) {
+        setFormData(prev => ({ ...prev, category: detectedCategory }));
+        setAiAnalysis(`✨ Auto-detected: ${detectedCategory}`);
+      }
+    }
+  }, [formData.description]);
+
+  // ===== EXIF EXTRACTION FUNCTION =====
+  const extractGPSFromPhoto = async (file: File) => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const tags = ExifReader.load(arrayBuffer);
+      
+      // Check for GPS data
+      if (tags.GPSLatitude && tags.GPSLongitude) {
+        const lat = tags.GPSLatitude.description;
+        const lng = tags.GPSLongitude.description;
+        
+        // Convert to decimal if needed
+        const latNum = typeof lat === 'string' ? parseFloat(lat) : lat;
+        const lngNum = typeof lng === 'string' ? parseFloat(lng) : lng;
+        
+        if (!isNaN(latNum) && !isNaN(lngNum)) {
+          setGpsCoordinates({ lat: latNum, lng: lngNum });
+          setFormData(prev => ({
+            ...prev,
+            latitude: latNum,
+            longitude: lngNum
+          }));
+          setGpsExtracted(true);
+          return true;
+        }
+      }
+      
+      setGpsExtracted(false);
+      return false;
+    } catch (error) {
+      console.error('Error extracting GPS:', error);
+      setGpsExtracted(false);
+      return false;
+    }
+  };
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setPhoto(file);
@@ -42,6 +136,14 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
         setPhotoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+      
+      // Extract GPS data from EXIF
+      const hasGPS = await extractGPSFromPhoto(file);
+      if (hasGPS) {
+        setAiAnalysis('📍 GPS coordinates extracted from photo!');
+      } else {
+        setAiAnalysis('⚠️ No GPS data found in photo. Using current location.');
+      }
     }
   };
 
@@ -117,6 +219,29 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
             <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
               <span className="material-symbols-outlined text-red-600">error</span>
               <p className="text-sm text-red-800 font-medium">{error}</p>
+            </div>
+          )}
+
+          {/* AI Analysis / GPS Status */}
+          {aiAnalysis && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3 animate-fade-in">
+              <span className="material-symbols-outlined text-blue-600">
+                {gpsExtracted ? 'location_on' : 'auto_awesome'}
+              </span>
+              <p className="text-sm text-blue-800 font-medium">{aiAnalysis}</p>
+            </div>
+          )}
+
+          {/* GPS Coordinates Display */}
+          {gpsCoordinates && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined text-green-600 text-sm">check_circle</span>
+                <span className="text-xs font-bold text-green-800">GPS EXTRACTED</span>
+              </div>
+              <div className="text-xs text-green-700 font-mono">
+                📍 {gpsCoordinates.lat.toFixed(6)}°N, {gpsCoordinates.lng.toFixed(6)}°E
+              </div>
             </div>
           )}
 
@@ -236,7 +361,7 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
             </p>
           </div>
 
-          {/* Description */}
+          {/* Description with Keyword Detection */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
               Brief Description *
@@ -246,9 +371,12 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
               rows={2}
-              placeholder="e.g., Large pothole on main road"
+              placeholder="e.g., Large pothole on main road, broken streetlight..."
               required
             />
+            <p className="text-xs text-gray-500 mt-1">
+              💡 Tip: Type keywords like "pothole" or "streetlight" for auto-detection
+            </p>
           </div>
 
           {/* User Experience */}

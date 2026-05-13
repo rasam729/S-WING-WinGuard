@@ -560,71 +560,21 @@ function convertDMSToDD(dms, ref) {
   return dd;
 }
 
-// ===== IMPROVED: KEYWORD TRIAGE + AI ANALYSIS =====
+// ===== IMPROVED: KEYWORD TRIAGE (AI Analysis Removed for Demo) =====
 async function analyseImageAndTriage(dataUrl) {
   document.getElementById('ai-section').style.display = 'block';
-  document.getElementById('ai-result').textContent = 'Analysing image with AI...';
+  document.getElementById('ai-result').textContent = '✨ Image uploaded successfully!';
   document.getElementById('ai-tags').innerHTML = '';
   
-  // First, check if user has typed keywords in description
+  // Check if user has typed keywords in description
   const userText = document.getElementById('description').value.toLowerCase();
   const detectedCategory = triageByKeywords(userText);
   
   if (detectedCategory && document.getElementById('issue-type').value === '') {
     document.getElementById('issue-type').value = detectedCategory;
-    document.getElementById('ai-result').textContent = 'Auto-detected: ' + ISSUE_LABELS[detectedCategory];
-  }
-  
-  // Then run AI analysis
-  try {
-    const base64 = dataUrl.split(',')[1];
-    const mtype = dataUrl.split(';')[0].split(':')[1];
-    
-    const body = {
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 300,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mtype, data: base64 } },
-          { type: 'text', text: 'You are a road issue classifier. Look at this image and respond ONLY with a JSON object: { "issue_type": one of [pothole, road_crack, streetlight, illegal_parking, waterlogging, other], "severity": one of [low, medium, high], "keywords": [up to 4 short descriptive tags], "summary": "one sentence max 12 words" }. No markdown, no explanation, just the JSON.' }
-        ]
-      }]
-    };
-    
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    
-    const data = await res.json();
-    const text = (data.content || []).map(c => c.text || '').join('');
-    
-    let parsed;
-    try { 
-      parsed = JSON.parse(text.replace(/```json|```/g, '').trim()); 
-    } catch(e) { 
-      parsed = null; 
-    }
-    
-    if (parsed) {
-      document.getElementById('ai-result').textContent = parsed.summary || 'Issue detected';
-      aiKeywords = parsed.keywords || [];
-      document.getElementById('ai-tags').innerHTML = 
-        aiKeywords.map(k => `<span class="ai-tag">${k}</span>`).join('');
-      
-      // Auto-fill issue type if not already set
-      if (parsed.issue_type && document.getElementById('issue-type').value === '') {
-        document.getElementById('issue-type').value = parsed.issue_type;
-      }
-    } else {
-      document.getElementById('ai-result').textContent = 
-        'Could not auto-classify. Please select issue type.';
-    }
-  } catch(e) {
-    document.getElementById('ai-result').textContent = 
-      'AI unavailable — please fill in manually.';
+    document.getElementById('ai-result').textContent = '✨ Auto-detected: ' + ISSUE_LABELS[detectedCategory];
+  } else {
+    document.getElementById('ai-result').textContent = '📸 Photo uploaded. Type keywords like "pothole" or "streetlight" for auto-detection.';
   }
   
   document.getElementById('submit-btn').disabled = false;
