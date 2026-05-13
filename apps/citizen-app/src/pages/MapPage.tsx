@@ -64,6 +64,13 @@ const MapPage: React.FC = () => {
   const [pickedCoordinates, setPickedCoordinates] = useState<[number, number] | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [activeRoute, setActiveRoute] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [highlightedLocation, setHighlightedLocation] = useState<[number, number] | null>(null);
+  const [isTrackingLocation, setIsTrackingLocation] = useState(false);
+  const [currentDirection, setCurrentDirection] = useState<string>('');
+  const watchIdRef = useRef<number | null>(null);
   
   // Route state
   const [destination, setDestination] = useState<[number, number] | null>(null);
@@ -177,6 +184,167 @@ const MapPage: React.FC = () => {
     }
   };
 
+  // Real-time location tracking
+  const startLocationTracking = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setIsTrackingLocation(true);
+    
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const newLocation: [number, number] = [
+          position.coords.latitude,
+          position.coords.longitude,
+        ];
+        setUserLocation(newLocation);
+        
+        // Update direction if navigating
+        if (activeRoute && activeRoute.path && activeRoute.path.length > 0) {
+          updateNavigationDirection(newLocation);
+        }
+      },
+      (error) => {
+        console.error('Error tracking location:', error);
+        setIsTrackingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+      }
+    );
+  };
+
+  const stopLocationTracking = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setIsTrackingLocation(false);
+    setCurrentDirection('');
+  };
+
+  const updateNavigationDirection = (currentLoc: [number, number]) => {
+    if (!activeRoute || !activeRoute.path || activeRoute.path.length === 0) return;
+
+    // Find nearest point on route
+    let nearestPoint = activeRoute.path[0];
+    let minDistance = calculateDistance(
+      { lat: currentLoc[0], lng: currentLoc[1] },
+      { lat: nearestPoint.lat, lng: nearestPoint.lng }
+    );
+    let nearestIndex = 0;
+
+    activeRoute.path.forEach((point: any, index: number) => {
+      const dist = calculateDistance(
+        { lat: currentLoc[0], lng: currentLoc[1] },
+        { lat: point.lat, lng: point.lng }
+      );
+      if (dist < minDistance) {
+        minDistance = dist;
+        nearestPoint = point;
+        nearestIndex = index;
+      }
+    });
+
+    // Get next point for direction
+    if (nearestIndex < activeRoute.path.length - 1) {
+      const nextPoint = activeRoute.path[nearestIndex + 1];
+      const bearing = calculateBearing(
+        { lat: currentLoc[0], lng: currentLoc[1] },
+        { lat: nextPoint.lat, lng: nextPoint.lng }
+      );
+      const direction = getDirectionFromBearing(bearing);
+      const distance = minDistance * 1000; // Convert to meters
+
+      if (distance < 50) {
+        setCurrentDirection(`Continue ${direction}`);
+      } else if (distance < 100) {
+        setCurrentDirection(`In ${Math.round(distance)}m, turn ${direction}`);
+      } else {
+        setCurrentDirection(`Follow route ${direction} for ${(minDistance).toFixed(1)}km`);
+      }
+    } else {
+      setCurrentDirection('You are approaching your destination');
+    }
+  };
+
+  const calculateBearing = (start: { lat: number; lng: number }, end: { lat: number; lng: number }): number => {
+    const startLat = start.lat * Math.PI / 180;
+    const startLng = start.lng * Math.PI / 180;
+    const endLat = end.lat * Math.PI / 180;
+    const endLng = end.lng * Math.PI / 180;
+
+    const dLng = endLng - startLng;
+    const y = Math.sin(dLng) * Math.cos(endLat);
+    const x = Math.cos(startLat) * Math.sin(endLat) - Math.sin(startLat) * Math.cos(endLat) * Math.cos(dLng);
+    const bearing = Math.atan2(y, x) * 180 / Math.PI;
+
+    return (bearing + 360) % 360;
+  };
+
+  const getDirectionFromBearing = (bearing: number): string => {
+    const directions = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
+    const index = Math.round(bearing / 45) % 8;
+    return directions[index];
+  };
+
+  // Location search using Nominatim API
+  const searchLocation = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Bengaluru, India')}&format=json&limit=5&addressdetails=1`
+      );
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchSelect = (result: any) => {
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    setHighlightedLocation([lat, lng]);
+    setSearchResults([]);
+    setSearchQuery(result.display_name);
+    
+    // Optionally, you can also set this as picked coordinates
+    setPickedCoordinates([lat, lng]);
+  };
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery) {
+        searchLocation(searchQuery);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Cleanup location tracking on unmount
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
+
   const clearRoute = () => {
     setDestination(null);
     setRoutePoints([]);
@@ -266,6 +434,19 @@ const MapPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Viosa AI Assistant Button */}
+            <button
+              onClick={() => setShowChatbot(true)}
+              className="relative p-3 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 rounded-xl transition-all duration-200 group"
+              title="Viosa AI Assistant"
+            >
+              <div className="relative">
+                <svg className="w-6 h-6 text-purple-600 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse"></span>
+              </div>
+            </button>
             <button
               onClick={() => {
                 setShowCoordinatePicker(!showCoordinatePicker);
@@ -358,6 +539,44 @@ const MapPage: React.FC = () => {
           </Marker>
         )}
         
+        {/* Highlighted search location marker */}
+        {highlightedLocation && (
+          <>
+            <Marker
+              position={highlightedLocation}
+              icon={L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); width: 48px; height: 48px; border-radius: 50%; border: 4px solid white; box-shadow: 0 6px 16px rgba(0,0,0,0.4); display: flex; align-items: center; justify-center; color: white; font-size: 24px; animation: bounce 1s infinite;">📍</div>',
+                iconSize: [48, 48],
+                iconAnchor: [24, 24],
+              })}
+            >
+              <Popup>
+                <div className="text-sm">
+                  <p className="font-bold mb-1">Search Result</p>
+                  <p className="text-xs text-gray-600">
+                    {highlightedLocation[0].toFixed(6)}, {highlightedLocation[1].toFixed(6)}
+                  </p>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${highlightedLocation[0].toFixed(6)}, ${highlightedLocation[1].toFixed(6)}`);
+                      alert('Coordinates copied to clipboard!');
+                    }}
+                    className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-xs font-bold hover:bg-blue-600"
+                  >
+                    Copy Coordinates
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+            <Circle
+              center={highlightedLocation}
+              radius={200}
+              pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.15, weight: 3 }}
+            />
+          </>
+        )}
+        
         {/* User location */}
         {userLocation && (
           <>
@@ -448,19 +667,66 @@ const MapPage: React.FC = () => {
       <div className="absolute top-24 left-0 right-0 px-6 z-[999] pointer-events-none">
         <div className="max-w-2xl mx-auto space-y-4 pointer-events-auto">
           {/* Search Bar */}
-          <div className="bg-white shadow-xl rounded-2xl flex items-center px-5 py-4 border border-gray-200">
-            <span className="material-symbols-outlined text-gray-400 mr-3">search</span>
-            <input
-              className="bg-transparent border-none focus:ring-0 w-full text-gray-800 placeholder-gray-400 font-medium"
-              placeholder="Search location in Bengaluru..."
-              type="text"
-            />
+          <div className="bg-white shadow-xl rounded-2xl border border-gray-200">
+            <div className="flex items-center px-5 py-4">
+              <span className="material-symbols-outlined text-gray-400 mr-3">search</span>
+              <input
+                className="bg-transparent border-none focus:ring-0 w-full text-gray-800 placeholder-gray-400 font-medium outline-none"
+                placeholder="Search location in Bengaluru..."
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {isSearching && (
+                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              )}
+            </div>
+            
+            {/* Search Results Dropdown */}
+            {searchResults.length > 0 && (
+              <div className="border-t border-gray-200 max-h-64 overflow-y-auto">
+                {searchResults.map((result, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSearchSelect(result)}
+                    className="w-full text-left px-5 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="material-symbols-outlined text-blue-600 mt-0.5">location_on</span>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900 text-sm">{result.display_name.split(',')[0]}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{result.display_name}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Modern Floating Action Buttons */}
       <div className="absolute bottom-28 right-6 flex flex-col gap-3 z-[999]">
+        {isTrackingLocation ? (
+          <button
+            onClick={stopLocationTracking}
+            className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 shadow-xl flex items-center justify-center text-white hover:scale-105 transition-transform duration-200 hover:shadow-2xl animate-pulse"
+          >
+            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+              gps_off
+            </span>
+          </button>
+        ) : (
+          <button
+            onClick={startLocationTracking}
+            className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 shadow-xl flex items-center justify-center text-white hover:scale-105 transition-transform duration-200 hover:shadow-2xl"
+          >
+            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+              gps_fixed
+            </span>
+          </button>
+        )}
         <button
           onClick={getUserLocation}
           className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-xl flex items-center justify-center text-white hover:scale-105 transition-transform duration-200 hover:shadow-2xl"
@@ -470,6 +736,21 @@ const MapPage: React.FC = () => {
           </span>
         </button>
       </div>
+
+      {/* Real-time Direction Display */}
+      {isTrackingLocation && currentDirection && (
+        <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-[999] pointer-events-auto">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-2xl shadow-2xl border-2 border-white animate-slide-down">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-3xl animate-pulse">navigation</span>
+              <div>
+                <p className="text-xs font-bold opacity-80 uppercase">Next Direction</p>
+                <p className="text-lg font-bold">{currentDirection}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modern Legend */}
       <div className="absolute bottom-28 left-6 z-[999]">
@@ -577,18 +858,6 @@ const MapPage: React.FC = () => {
           </button>
         </div>
       </nav>
-
-      {/* Viosa Chatbot Floating Button - Improved */}
-      <button 
-        onClick={() => setShowChatbot(true)}
-        className="fixed bottom-32 right-6 w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 shadow-2xl flex flex-col items-center justify-center text-white hover:scale-110 transition-all duration-300 z-[1000] group"
-      >
-        <svg className="w-8 h-8 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-        <span className="text-[9px] font-bold tracking-wide">VIOSA</span>
-        <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
-      </button>
 
       {/* Viosa Chatbot Component */}
       <ViosaChatbot
