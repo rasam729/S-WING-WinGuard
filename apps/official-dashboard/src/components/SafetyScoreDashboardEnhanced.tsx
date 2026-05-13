@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import BudgetCalculator from './BudgetCalculator';
 
 interface SafetyScore {
   crimeScore: number;
@@ -406,6 +407,9 @@ const SafetyScoreDashboardEnhanced: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Budget Calculator */}
+              <BudgetCalculator changes={simulationParams} />
 
               <button
                 onClick={runSimulation}
