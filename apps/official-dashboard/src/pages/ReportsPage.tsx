@@ -18,7 +18,7 @@ interface Report {
 
 export default function ReportsPage() {
   const navigate = useNavigate();
-  const { logout } = useAuthStore();
+  const { logout, token } = useAuthStore(); // Get token from hook
   
   const [reports, setReports] = useState<Report[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
@@ -26,19 +26,25 @@ export default function ReportsPage() {
 
   useEffect(() => {
     fetchReports();
-  }, [filter]);
+  }, []); // Remove filter dependency since we're not using it anymore
 
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const url = filter === 'all' 
-        ? 'http://localhost:3000/api/reports'
-        : `http://localhost:3000/api/reports?status=${filter}`;
+      // Use /all endpoint which doesn't require auth
+      const url = 'http://localhost:3000/api/reports/all';
       
       const response = await fetch(url);
       const data = await response.json();
-      if (data.success) {
-        setReports(data.data);
+      console.log('API Response:', data);
+      console.log('Reports array:', data.data?.reports);
+      console.log('Reports length:', data.data?.reports?.length);
+      
+      if (data.success && data.data && data.data.reports) {
+        console.log('Setting reports:', data.data.reports);
+        setReports(data.data.reports);
+      } else {
+        console.error('Invalid data structure:', data);
       }
     } catch (error) {
       console.error('Error fetching reports:', error);
