@@ -82,10 +82,12 @@ app.use('/api/routes', routeRoutes);
 import simulationRoutes from './routes/simulationRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import notificationsRoutes from './routes/notificationsRoutes';
+import safetyScoreRoutes from './routes/safetyScoreRoutes';
 
 app.use('/api', simulationRoutes);
 app.use('/api', analyticsRoutes);
 app.use('/api', notificationsRoutes);
+app.use('/api', safetyScoreRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

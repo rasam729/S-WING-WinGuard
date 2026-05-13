@@ -6,6 +6,7 @@ import StatsPage from './pages/StatsPage';
 import ReportsPage from './pages/ReportsPage';
 import IssuesPage from './pages/IssuesPage';
 import SimulationsPage from './pages/SimulationsPage';
+import SafetyScoreDashboardEnhanced from './components/SafetyScoreDashboardEnhanced';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/issues" element={<IssuesPage />} />
           <Route path="/simulations" element={<SimulationsPage />} />
+          <Route path="/safety-scores" element={<SafetyScoreDashboardEnhanced />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
