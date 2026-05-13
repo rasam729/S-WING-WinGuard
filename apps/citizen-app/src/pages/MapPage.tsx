@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -7,7 +7,6 @@ import io from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 import ViosaChatbot from '../components/ViosaChatbot';
 import NavigationEngine from '../components/NavigationEngine';
-import { RouteOption } from '../utils/enhancedSafeRouteCalculator';
 import { calculateDistance } from '../store/issuesStore';
 
 // Fix Leaflet default marker icons
@@ -43,14 +42,15 @@ interface Notification {
 }
 
 // Custom marker icons
-const createCustomIcon = (color: string) => {
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="background: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  });
-};
+// Custom marker icons (unused but kept for future use)
+// const createCustomIcon = (color: string) => {
+//   return L.divIcon({
+//     className: 'custom-marker',
+//     html: `<div style="background: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
+//     iconSize: [24, 24],
+//     iconAnchor: [12, 12],
+//   });
+// };
 
 const MapPage: React.FC = () => {
   const navigate = useNavigate();

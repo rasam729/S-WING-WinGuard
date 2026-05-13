@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { mockIssues, getIssuesNearLocation, getIssueStats, calculateSafetyScore } from '../store/issuesStore';
+import { getIssuesNearLocation, getIssueStats, calculateSafetyScore } from '../store/issuesStore';
 import { generateRouteOptions, getRouteSummary, RouteOption } from '../utils/enhancedSafeRouteCalculator';
 import { VIOSA_KNOWLEDGE } from '../data/viosKnowledgeBase';
 
@@ -16,11 +16,11 @@ interface ViosaChatbotProps {
   isOpen: boolean;
   onClose: () => void;
   userLocation?: [number, number];
-  nearbyReports?: any[];
+  nearbyReports?: any[]; // Kept for future use
   onRouteSelect?: (route: RouteOption) => void;
 }
 
-const ViosaChatbot: React.FC<ViosaChatbotProps> = ({ isOpen, onClose, userLocation, nearbyReports, onRouteSelect }) => {
+const ViosaChatbot: React.FC<ViosaChatbotProps> = ({ isOpen, onClose, userLocation, onRouteSelect }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -37,7 +37,6 @@ const ViosaChatbot: React.FC<ViosaChatbotProps> = ({ isOpen, onClose, userLocati
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [destinationInput, setDestinationInput] = useState('');
   const [awaitingDestination, setAwaitingDestination] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 

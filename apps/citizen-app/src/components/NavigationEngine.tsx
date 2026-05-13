@@ -3,7 +3,6 @@ import { mockIssues } from '../store/issuesStore';
 import {
   calculateGuardianPathWithRoads,
   calculateRouteStats,
-  calculateDistance,
 } from '../../../../shared/routingUtils';
 
 interface NavigationEngineProps {
@@ -123,7 +122,7 @@ const NavigationEngine: React.FC<NavigationEngineProps> = ({
             totalDistance: guardianResult.distance,
             estimatedMinutes: Math.round(guardianResult.duration),
           },
-          directions: guardianDirections.map((step, idx) => ({
+          directions: guardianDirections.map((step: any) => ({
             instruction: step.instruction,
             distance: guardianStats.totalDistance,
             distanceFromPrev: step.distance / 1000,
@@ -144,7 +143,7 @@ const NavigationEngine: React.FC<NavigationEngineProps> = ({
             totalDistance: altResult.distance,
             estimatedMinutes: Math.round(altResult.duration),
           },
-          directions: altDirections.map((step, idx) => ({
+          directions: altDirections.map((step: any) => ({
             instruction: step.instruction,
             distance: altStats.totalDistance,
             distanceFromPrev: step.distance / 1000,
@@ -200,7 +199,7 @@ const NavigationEngine: React.FC<NavigationEngineProps> = ({
   };
 
   const handlePrevStep = () => {
-    if (currentStepIndex <= 0) return;
+    if (currentStepIndex <= 0 || !selectedRoute) return;
 
     const prevIndex = currentStepIndex - 1;
     setCurrentStepIndex(prevIndex);

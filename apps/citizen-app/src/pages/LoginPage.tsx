@@ -38,10 +38,8 @@ export default function LoginPage() {
   const handleDemoMode = () => {
     // Demo mode - bypass login
     login('demo-token', {
-      userId: 999,
+      id: '999',
       username: 'demo_user',
-      email: 'demo@winguard.com',
-      fullName: 'Demo User',
       role: 'citizen'
     });
     navigate('/', { replace: true });

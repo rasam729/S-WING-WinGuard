@@ -1,4 +1,4 @@
-import { mockIssues, calculateDistance, calculateSafetyScore, Issue } from '../store/issuesStore';
+import { mockIssues, calculateDistance, calculateSafetyScore } from '../store/issuesStore';
 
 export interface RoutePoint {
   lat: number;
@@ -138,7 +138,8 @@ export const generateRouteOptions = (
   start: { lat: number; lng: number },
   end: { lat: number; lng: number }
 ): RouteOption[] => {
-  const directDistance = calculateDistance(start, end);
+  // Calculate direct distance for reference (not used in current implementation)
+  // const directDistance = calculateDistance(start, end);
   
   // Safest Route - Maximum hazard avoidance
   const safestWaypoints = calculateRouteWithHazardAvoidance(start, end, 'high');

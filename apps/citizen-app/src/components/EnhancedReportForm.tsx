@@ -183,7 +183,7 @@ const EnhancedReportForm: React.FC<EnhancedReportFormProps> = ({
         throw new Error('Failed to submit report');
       }
 
-      const result = await response.json();
+      await response.json(); // Response received but not used
       
       // Show success message with integrated features
       alert('✅ Report submitted successfully!\n\n' +

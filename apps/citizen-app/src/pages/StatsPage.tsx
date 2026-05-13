@@ -80,7 +80,7 @@ const StatsPage: React.FC = () => {
         });
 
         // Build recent activity from reports
-        const activities: RecentActivityItem[] = reports.slice(0, 4).map((report: any, index: number) => {
+        const activities: RecentActivityItem[] = reports.slice(0, 4).map((report: any) => {
           const timeAgo = getTimeAgo(new Date(report.created_at));
           return {
             id: report.report_id,
