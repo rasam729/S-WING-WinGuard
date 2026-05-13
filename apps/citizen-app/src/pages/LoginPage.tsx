@@ -35,6 +35,18 @@ export default function LoginPage() {
     }
   };
 
+  const handleDemoMode = () => {
+    // Demo mode - bypass login
+    login('demo-token', {
+      userId: 999,
+      username: 'demo_user',
+      email: 'demo@winguard.com',
+      fullName: 'Demo User',
+      role: 'citizen'
+    });
+    navigate('/', { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center p-4 safe-top safe-bottom">
       <div className="w-full max-w-md">
@@ -107,14 +119,22 @@ export default function LoginPage() {
                 'Sign In'
               )}
             </button>
+
+            <button
+              type="button"
+              onClick={handleDemoMode}
+              className="w-full py-3 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors touch-button"
+            >
+              🎯 Demo Mode (Test Features)
+            </button>
           </form>
 
           {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-600 text-center">
-              <strong>Demo Credentials:</strong><br />
-              Username: citizen@test.com<br />
-              Password: citizen123
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-xs text-blue-800 text-center font-semibold">
+              ✨ Click "Demo Mode" to test:<br />
+              • EXIF GPS Extraction<br />
+              • Keyword Triage Auto-detection
             </p>
           </div>
         </div>
