@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@winguard/shared": "*",
-    "axios": "^1.6.5",
+    "axios": "^1.16.0",
     "clsx": "^2.1.0",
     "exifreader": "^4.21.1",
     "leaflet": "^1.9.4",
