@@ -80,7 +80,7 @@ export default function DashboardPage() {
   const [citizenReports, setCitizenReports] = useState<CitizenReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
 
-  // Fetch citizen reports from API
+  // Fetch citizen reports from API and convert to issues
   useEffect(() => {
     fetchCitizenReports();
     // Refresh every 30 seconds
@@ -93,7 +93,79 @@ export default function DashboardPage() {
       const response = await fetch('/api/reports/all');
       const data = await response.json();
       if (data.success && data.data && data.data.reports) {
-        setCitizenReports(data.data.reports);
+        const reports = data.data.reports;
+        setCitizenReports(reports);
+        
+        // Convert citizen reports to issues and add to store
+        reports.forEach((report: CitizenReport) => {
+          // Check if this report is already in issues (by checking if report_id exists)
+          const issueId = report.report_id + 10000;
+          const existingIssue = issues.find(issue => issue.id === issueId);
+          
+          // Map category to issue type
+          let issueType: 'pothole' | 'streetlight' | 'police_booth' | 'hospital' = 'pothole';
+          const category = report.category.toLowerCase();
+          
+          if (category.includes('pothole') || category.includes('road crack')) {
+            issueType = 'pothole';
+          } else if (category.includes('streetlight') || category.includes('light')) {
+            issueType = 'streetlight';
+          } else if (category.includes('police')) {
+            issueType = 'police_booth';
+          } else if (category.includes('hospital')) {
+            issueType = 'hospital';
+          }
+          
+          // Map status to issue status
+          let issueStatus: 'critical' | 'in_progress' | 'resolved' = 'critical';
+          const status = report.status.toLowerCase();
+          
+          if (status.includes('resolved') || status === 'resolved') {
+            issueStatus = 'resolved';
+          } else if (status.includes('progress') || status === 'in progress') {
+            issueStatus = 'in_progress';
+          } else {
+            issueStatus = 'critical';
+          }
+          
+          // Calculate time ago
+          const reportDate = new Date(report.created_at);
+          const now = new Date();
+          const diffMs = now.getTime() - reportDate.getTime();
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffHours = Math.floor(diffMs / 3600000);
+          const diffDays = Math.floor(diffMs / 86400000);
+          
+          let timeAgo = 'Just now';
+          if (diffMins < 60) {
+            timeAgo = `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+          } else if (diffHours < 24) {
+            timeAgo = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+          } else {
+            timeAgo = `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+          }
+          
+          if (!existingIssue) {
+            // Create new issue from citizen report
+            const newIssue: Issue = {
+              id: issueId,
+              type: issueType,
+              latitude: report.latitude,
+              longitude: report.longitude,
+              status: issueStatus,
+              description: `${report.category}: ${report.description}`,
+              reportedAt: timeAgo,
+              severity: report.severity
+            };
+            
+            addIssue(newIssue);
+          } else {
+            // Update existing issue if status changed
+            if (existingIssue.status !== issueStatus) {
+              updateIssueStatus(issueId, issueStatus);
+            }
+          }
+        });
       }
     } catch (error) {
       console.error('Error fetching citizen reports:', error);
@@ -118,15 +190,39 @@ export default function DashboardPage() {
 
     // Send notification to citizen app
     try {
+      let message = '';
+      let type: 'info' | 'success' = 'info';
+      
+      if (newStatus === 'in_progress') {
+        message = `Good news! We're working on fixing the ${issue?.type.replace('_', ' ')} issue you reported. Our team is on it!`;
+        type = 'info';
+      } else if (newStatus === 'resolved') {
+        message = `Great news! The ${issue?.type.replace('_', ' ')} issue you reported has been resolved. Thank you for helping make Bengaluru safer!`;
+        type = 'success';
+      }
+      
       await fetch('/api/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: 1,
-          message: `${issue?.description} - Status updated to ${newStatus === 'in_progress' ? 'In Progress' : 'Resolved'}`,
-          type: newStatus === 'resolved' ? 'success' : 'info'
+          user_id: 1, // In production, this would be the actual user who reported it
+          report_id: issueId > 10000 ? issueId - 10000 : null, // Link to original report if it's a citizen report
+          message: message,
+          type: type
         })
       });
+      
+      // Also update the report status in the database if it's a citizen report
+      if (issueId > 10000) {
+        const reportId = issueId - 10000;
+        await fetch(`/api/reports/${reportId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: newStatus === 'resolved' ? 'Resolved' : 'In Progress'
+          })
+        });
+      }
     } catch (error) {
       console.error('Error sending notification:', error);
     }
@@ -473,7 +569,9 @@ export default function DashboardPage() {
                 <MapClickHandler />
                 
                 {/* Render all issues with glowing markers */}
-                {issues.map((issue) => (
+                {issues.map((issue) => {
+                  const isCitizenReport = issue.id > 10000;
+                  return (
                   <Marker
                     key={issue.id}
                     position={[issue.latitude, issue.longitude]}
@@ -483,17 +581,24 @@ export default function DashboardPage() {
                       <div className="text-sm min-w-[250px]">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-2xl">{getIconForType(issue.type)}</span>
-                          <div>
+                          <div className="flex-1">
                             <p className="font-bold text-gray-900 capitalize">{issue.type.replace('_', ' ')}</p>
-                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                              issue.status === 'critical' 
-                                ? 'bg-red-100 text-red-700'
-                                : issue.status === 'in_progress'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-green-100 text-green-700'
-                            }`}>
-                              {issue.status === 'critical' ? 'Critical' : issue.status === 'in_progress' ? 'In Progress' : 'Resolved'}
-                            </span>
+                            <div className="flex gap-1 mt-1">
+                              <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                issue.status === 'critical' 
+                                  ? 'bg-red-100 text-red-700'
+                                  : issue.status === 'in_progress'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-green-100 text-green-700'
+                              }`}>
+                                {issue.status === 'critical' ? 'Critical' : issue.status === 'in_progress' ? 'In Progress' : 'Resolved'}
+                              </span>
+                              {isCitizenReport && (
+                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                                  Citizen Report
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <p className="text-gray-700 mb-2">{issue.description}</p>
@@ -535,50 +640,10 @@ export default function DashboardPage() {
                       </div>
                     </Popup>
                   </Marker>
-                ))}
+                );
+                })}
                 
-                {/* Render citizen reports as markers */}
-                {citizenReports.map((report) => (
-                  <Marker
-                    key={`report-${report.report_id}`}
-                    position={[report.latitude, report.longitude]}
-                    icon={createGlowingIcon(getIconForType(report.category), report.status.toLowerCase() === 'resolved' ? 'resolved' : 'critical')}
-                  >
-                    <Popup>
-                      <div className="text-sm min-w-[250px]">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-2xl">{getIconForType(report.category)}</span>
-                          <div>
-                            <p className="font-bold text-gray-900">{report.category}</p>
-                            <span className="text-xs font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-                              Citizen Report
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-gray-700 mb-2">{report.description}</p>
-                        <p className="text-xs text-gray-500 mb-2">Severity: {report.severity}/10</p>
-                        <p className="text-xs text-gray-500 mb-3">
-                          Reported {new Date(report.created_at).toLocaleString()}
-                        </p>
-                        
-                        {report.photo_url && (
-                          <img 
-                            src={report.photo_url} 
-                            alt="Report" 
-                            className="w-full h-32 object-cover rounded-lg mb-3"
-                          />
-                        )}
-                        
-                        <button
-                          onClick={() => navigate('/reports')}
-                          className="w-full px-3 py-2 bg-teal-600 text-white rounded-lg text-xs font-bold hover:bg-teal-700 transition-all"
-                        >
-                          View Full Report
-                        </button>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
+                {/* Citizen reports are now converted to issues and rendered above */}
                 
                 {/* Temporary marker for installation location */}
                 {clickedLocation && simulationMode === 'install' && (

@@ -81,7 +81,7 @@ app.use('/api/routes', routeRoutes);
 // Import new routes
 import simulationRoutes from './routes/simulationRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
-import notificationsRoutes from './routes/notificationsRoutes';
+import notificationsRoutes, { setNotificationSocketIO } from './routes/notificationsRoutes';
 import issuesRoutes from './routes/issues';
 import safetyScoreRoutes from './routes/safetyScoreRoutes';
 import budgetTrackingRoutes from './routes/budgetTrackingRoutes';
@@ -102,6 +102,8 @@ app.use(errorHandler);
 
 // Initialize Socket.IO
 initializeSocketIO(io);
+setSocketIO(io); // Pass Socket.IO instance to reports routes for real-time updates
+setNotificationSocketIO(io); // Pass Socket.IO instance to notifications routes
 
 // Start Server
 const PORT = process.env.PORT || 3000;

@@ -8,6 +8,13 @@ import pool from '../config/postgres';
 
 const router = Router();
 
+// Socket.io instance will be set by server
+let io: any = null;
+
+export function setNotificationSocketIO(socketIO: any) {
+  io = socketIO;
+}
+
 /**
  * GET /api/notifications
  * Get all notifications for a user (by report IDs or all)
@@ -145,6 +152,15 @@ router.post('/notifications', async (req: Request, res: Response) => {
        RETURNING *`,
       [user_id, report_id || null, message, type || 'info']
     );
+    
+    // Emit Socket.io event for real-time notification
+    if (io) {
+      io.emit('new-notification', {
+        notification: result.rows[0],
+        message: 'New notification received'
+      });
+      console.log('📡 Broadcasted new notification:', result.rows[0].notification_id);
+    }
     
     res.json({
       success: true,

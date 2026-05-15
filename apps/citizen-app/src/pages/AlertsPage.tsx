@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import io from 'socket.io-client';
 
 interface Alert {
   notification_id: number;
@@ -19,9 +20,27 @@ const AlertsPage: React.FC = () => {
   // Fetch notifications from API
   useEffect(() => {
     fetchNotifications();
-    // Refresh every 30 seconds
+    
+    // Connect to Socket.io for real-time notification updates
+    const socket = io('http://localhost:3000');
+    
+    socket.on('new-notification', (data: any) => {
+      console.log('New notification received:', data);
+      fetchNotifications(); // Refresh notifications
+    });
+    
+    socket.on('report-updated', (data: any) => {
+      console.log('Report status updated:', data);
+      fetchNotifications(); // Refresh to get new status update notifications
+    });
+    
+    // Refresh every 30 seconds as backup
     const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      socket.disconnect();
+      clearInterval(interval);
+    };
   }, []);
 
   const fetchNotifications = async () => {
