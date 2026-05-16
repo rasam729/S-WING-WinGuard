@@ -27,11 +27,42 @@ interface IssuesStore {
   };
 }
 
-// Mock data with more issues including potholes
+// Mock data with issues across India (on roads)
 const initialIssues: Issue[] = [
+  // Bengaluru
   { id: 1, type: 'pothole', latitude: 12.9759, longitude: 77.6061, status: 'critical', description: 'Severe pothole on MG Road', reportedAt: '2 hours ago', severity: 9 },
   { id: 2, type: 'streetlight', latitude: 12.9716, longitude: 77.6412, status: 'critical', description: 'Broken streetlight in Indiranagar', reportedAt: '5 hours ago', severity: 8 },
   { id: 3, type: 'pothole', latitude: 12.9350, longitude: 77.6200, status: 'in_progress', description: 'Pothole repair in Koramangala', reportedAt: '1 day ago', severity: 7 },
+  
+  // Mumbai
+  { id: 16, type: 'pothole', latitude: 19.0760, longitude: 72.8777, status: 'critical', description: 'Large pothole on Marine Drive', reportedAt: '1 hour ago', severity: 9 },
+  { id: 17, type: 'streetlight', latitude: 19.0176, longitude: 72.8561, status: 'critical', description: 'Streetlight not working in Bandra', reportedAt: '3 hours ago', severity: 7 },
+  
+  // Delhi
+  { id: 18, type: 'pothole', latitude: 28.6139, longitude: 77.2090, status: 'critical', description: 'Dangerous pothole on Connaught Place', reportedAt: '30 minutes ago', severity: 10 },
+  { id: 19, type: 'streetlight', latitude: 28.5355, longitude: 77.3910, status: 'in_progress', description: 'Streetlight repair in Noida', reportedAt: '4 hours ago', severity: 6 },
+  
+  // Chennai
+  { id: 20, type: 'pothole', latitude: 13.0827, longitude: 80.2707, status: 'critical', description: 'Pothole on Anna Salai', reportedAt: '2 hours ago', severity: 8 },
+  { id: 21, type: 'streetlight', latitude: 13.0569, longitude: 80.2425, status: 'resolved', description: 'Streetlight fixed in T Nagar', reportedAt: '1 day ago', severity: 5 },
+  
+  // Hyderabad
+  { id: 22, type: 'pothole', latitude: 17.3850, longitude: 78.4867, status: 'in_progress', description: 'Pothole on Hitech City Road', reportedAt: '5 hours ago', severity: 7 },
+  { id: 23, type: 'police_booth', latitude: 17.4239, longitude: 78.4738, status: 'resolved', description: 'New police booth in Gachibowli', reportedAt: '2 days ago', severity: 0 },
+  
+  // Pune
+  { id: 24, type: 'pothole', latitude: 18.5204, longitude: 73.8567, status: 'critical', description: 'Deep pothole on FC Road', reportedAt: '1 hour ago', severity: 9 },
+  
+  // Kolkata
+  { id: 25, type: 'streetlight', latitude: 22.5726, longitude: 88.3639, status: 'critical', description: 'Streetlight broken on Park Street', reportedAt: '6 hours ago', severity: 7 },
+  
+  // Ahmedabad
+  { id: 26, type: 'pothole', latitude: 23.0225, longitude: 72.5714, status: 'in_progress', description: 'Pothole repair on SG Highway', reportedAt: '3 hours ago', severity: 6 },
+  
+  // Jaipur
+  { id: 27, type: 'streetlight', latitude: 26.9124, longitude: 75.7873, status: 'critical', description: 'Streetlight not working near Hawa Mahal', reportedAt: '4 hours ago', severity: 8 },
+  
+  // Original Bengaluru issues
   { id: 4, type: 'streetlight', latitude: 12.9550, longitude: 77.6100, status: 'resolved', description: 'Streetlight repaired in Whitefield', reportedAt: '3 days ago', severity: 6 },
   { id: 5, type: 'pothole', latitude: 12.9650, longitude: 77.5850, status: 'critical', description: 'Large pothole near Cubbon Park', reportedAt: '1 hour ago', severity: 10 },
   { id: 6, type: 'pothole', latitude: 12.9800, longitude: 77.6300, status: 'critical', description: 'Multiple potholes on Outer Ring Road', reportedAt: '3 hours ago', severity: 9 },

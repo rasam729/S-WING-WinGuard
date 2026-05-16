@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useAuthStore } from '../store/authStore';
 import { useIssuesStore, Issue } from '../store/issuesStore';
@@ -79,6 +79,15 @@ export default function DashboardPage() {
   const [clickedLocation, setClickedLocation] = useState<[number, number] | null>(null);
   const [citizenReports, setCitizenReports] = useState<CitizenReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
+  
+  // Search and location features
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showCoordinatePicker, setShowCoordinatePicker] = useState(false);
+  const [pickedCoordinates, setPickedCoordinates] = useState<[number, number] | null>(null);
+  const [pickedPlaceName, setPickedPlaceName] = useState<string>('');
+  const mapRef = useRef<any>(null);
 
   // Fetch citizen reports from API and convert to issues
   useEffect(() => {
@@ -174,9 +183,9 @@ export default function DashboardPage() {
     }
   };
 
-  // Default center (Bengaluru, India)
-  const mapCenter: [number, number] = [12.9716, 77.5946];
-  const mapZoom = 13;
+  // Default center (India center for country-wide view)
+  const mapCenter: [number, number] = [20.5937, 78.9629]; // Center of India
+  const mapZoom = 5; // Zoom level to show all of India
 
   const handleLogout = () => {
     logout();
@@ -275,11 +284,79 @@ export default function DashboardPage() {
     setClickedLocation(null);
   };
 
+  // Search for places using Nominatim (OpenStreetMap)
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=in&limit=5`
+      );
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle search result selection
+  const handleSelectSearchResult = (result: any) => {
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+    
+    // Fly to location
+    if (mapRef.current) {
+      mapRef.current.flyTo([lat, lon], 15, {
+        duration: 2
+      });
+    }
+    
+    setSearchResults([]);
+    setSearchQuery('');
+  };
+
+  // Reverse geocode to get place name from coordinates
+  const reverseGeocode = async (lat: number, lon: number) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+      );
+      const data = await response.json();
+      setPickedPlaceName(data.display_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
+      setPickedPlaceName(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+    }
+  };
+
+  // Toggle coordinate picker mode
+  const toggleCoordinatePicker = () => {
+    setShowCoordinatePicker(!showCoordinatePicker);
+    setPickedCoordinates(null);
+    setPickedPlaceName('');
+  };
+
+  // Map reference component
+  const MapRefSetter = () => {
+    const map = useMap();
+    useEffect(() => {
+      mapRef.current = map;
+    }, [map]);
+    return null;
+  };
+
   const MapClickHandler = () => {
     useMapEvents({
       click: (e: any) => {
         if (simulationMode === 'install') {
           setClickedLocation([e.latlng.lat, e.latlng.lng]);
+        } else if (showCoordinatePicker) {
+          const coords: [number, number] = [e.latlng.lat, e.latlng.lng];
+          setPickedCoordinates(coords);
+          reverseGeocode(coords[0], coords[1]);
         }
       },
     });
@@ -473,52 +550,166 @@ export default function DashboardPage() {
 
           {/* Digital Twin Map */}
           <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200">
-            <div className="p-5 border-b border-gray-200 flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">Digital Twin Command Center</h3>
-                <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mt-1">Real-time City Monitoring & Simulation</p>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {/* Installation Mode Buttons */}
-                <button 
-                  onClick={() => handleInstallNew('streetlight')}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
-                    simulationMode === 'install' && installType === 'streetlight'
-                      ? 'bg-teal-600 text-white border-teal-600 shadow-lg'
-                      : 'bg-white text-teal-700 border-teal-300 hover:border-teal-600'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
-                  </svg>
-                  Install Streetlight
-                </button>
-                <button 
-                  onClick={() => handleInstallNew('police_booth')}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
-                    simulationMode === 'install' && installType === 'police_booth'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-lg'
-                      : 'bg-white text-blue-700 border-blue-300 hover:border-blue-600'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
-                  </svg>
-                  Install Police Booth
-                </button>
-                {simulationMode === 'install' && (
+            <div className="p-5 border-b border-gray-200">
+              <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Digital Twin Command Center - India</h3>
+                  <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mt-1">Real-time Nationwide Monitoring & Simulation</p>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {/* Installation Mode Buttons */}
                   <button 
-                    onClick={cancelInstallation}
-                    className="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 bg-red-600 text-white hover:bg-red-700 transition-all"
+                    onClick={() => handleInstallNew('streetlight')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
+                      simulationMode === 'install' && installType === 'streetlight'
+                        ? 'bg-teal-600 text-white border-teal-600 shadow-lg'
+                        : 'bg-white text-teal-700 border-teal-300 hover:border-teal-600'
+                    }`}
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                      <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>
                     </svg>
-                    Cancel
+                    Install Streetlight
                   </button>
+                  <button 
+                    onClick={() => handleInstallNew('police_booth')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
+                      simulationMode === 'install' && installType === 'police_booth'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-lg'
+                        : 'bg-white text-blue-700 border-blue-300 hover:border-blue-600'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                    </svg>
+                    Install Police Booth
+                  </button>
+                  <button 
+                    onClick={toggleCoordinatePicker}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
+                      showCoordinatePicker
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-lg'
+                        : 'bg-white text-purple-700 border-purple-300 hover:border-purple-600'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                    Pick Coordinates
+                  </button>
+                  {(simulationMode === 'install' || showCoordinatePicker) && (
+                    <button 
+                      onClick={() => {
+                        cancelInstallation();
+                        setShowCoordinatePicker(false);
+                        setPickedCoordinates(null);
+                        setPickedPlaceName('');
+                      }}
+                      className="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 bg-red-600 text-white hover:bg-red-700 transition-all"
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                      </svg>
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              {/* Search Bar */}
+              <div className="relative">
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                      placeholder="Search for any place in India (e.g., Mumbai, Delhi, Connaught Place)..."
+                      className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-300 focus:border-teal-600 focus:outline-none text-sm"
+                    />
+                    <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                  </div>
+                  <button
+                    onClick={handleSearch}
+                    disabled={isSearching}
+                    className="px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-bold hover:from-teal-700 hover:to-cyan-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isSearching ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                        </svg>
+                        Search
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                {/* Search Results Dropdown */}
+                {searchResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border-2 border-gray-200 z-50 max-h-96 overflow-y-auto">
+                    {searchResults.map((result, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSelectSearchResult(result)}
+                        className="w-full px-4 py-3 text-left hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="flex items-start gap-3">
+                          <svg className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                          </svg>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-gray-900 text-sm">{result.display_name}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {result.lat}, {result.lon}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
+            
+            {/* Coordinate Picker Instructions */}
+            {showCoordinatePicker && (
+              <div className="px-5 py-3 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center animate-pulse">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-900">
+                      Click anywhere on the map to get coordinates and place name
+                    </p>
+                    {pickedCoordinates && (
+                      <div className="mt-2 p-3 bg-white rounded-lg border-2 border-purple-300">
+                        <p className="text-xs font-bold text-purple-900 mb-1">Selected Location:</p>
+                        <p className="text-sm text-gray-700 mb-1">
+                          📍 <strong>Coordinates:</strong> {pickedCoordinates[0].toFixed(6)}, {pickedCoordinates[1].toFixed(6)}
+                        </p>
+                        {pickedPlaceName && (
+                          <p className="text-sm text-gray-700">
+                            📌 <strong>Place:</strong> {pickedPlaceName}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Installation Instructions */}
             {simulationMode === 'install' && (
@@ -566,6 +757,7 @@ export default function DashboardPage() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 
+                <MapRefSetter />
                 <MapClickHandler />
                 
                 {/* Render all issues with glowing markers */}
@@ -644,6 +836,58 @@ export default function DashboardPage() {
                 })}
                 
                 {/* Citizen reports are now converted to issues and rendered above */}
+                
+                {/* Picked coordinates marker */}
+                {pickedCoordinates && showCoordinatePicker && (
+                  <Marker
+                    position={pickedCoordinates}
+                    icon={L.divIcon({
+                      className: 'custom-marker',
+                      html: `
+                        <div style="
+                          width: 40px;
+                          height: 40px;
+                          background: linear-gradient(135deg, #9333ea, #ec4899);
+                          border-radius: 50%;
+                          border: 4px solid white;
+                          box-shadow: 0 4px 16px rgba(147, 51, 234, 0.6);
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          color: white;
+                          font-size: 24px;
+                          animation: bounce 1s infinite;
+                        ">
+                          📍
+                        </div>
+                        <style>
+                          @keyframes bounce {
+                            0%, 100% { transform: translateY(0); }
+                            50% { transform: translateY(-10px); }
+                          }
+                        </style>
+                      `,
+                      iconSize: [40, 40],
+                      iconAnchor: [20, 20],
+                    })}
+                  >
+                    <Popup>
+                      <div className="text-sm">
+                        <p className="font-bold text-purple-600 mb-2">Selected Location</p>
+                        <p className="text-xs text-gray-700 mb-1">
+                          <strong>Coordinates:</strong><br/>
+                          {pickedCoordinates[0].toFixed(6)}, {pickedCoordinates[1].toFixed(6)}
+                        </p>
+                        {pickedPlaceName && (
+                          <p className="text-xs text-gray-700">
+                            <strong>Place:</strong><br/>
+                            {pickedPlaceName}
+                          </p>
+                        )}
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
                 
                 {/* Temporary marker for installation location */}
                 {clickedLocation && simulationMode === 'install' && (

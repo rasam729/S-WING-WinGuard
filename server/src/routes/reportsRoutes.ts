@@ -165,6 +165,66 @@ router.get('/reports/:id', async (req: Request, res: Response) => {
 });
 
 /**
+ * PUT /api/reports/:id/status
+ * Update report status (simplified endpoint for dashboard)
+ */
+router.put('/reports/:id/status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        error: 'Status is required'
+      });
+    }
+    
+    const query = `
+      UPDATE reports 
+      SET status = $1, updated_at = NOW()
+      WHERE report_id = $2
+      RETURNING 
+        report_id, category, severity, description,
+        ST_X(location::geometry) as longitude,
+        ST_Y(location::geometry) as latitude,
+        status, created_at, updated_at
+    `;
+    
+    const result = await pool.query(query, [status, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Report not found'
+      });
+    }
+    
+    // Emit socket event for real-time update
+    if (io) {
+      io.emit('report-updated', {
+        report_id: id,
+        status,
+        message: `Report status updated to ${status}`
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Report status updated successfully',
+      data: result.rows[0]
+    });
+  } catch (error: any) {
+    console.error('Error updating report status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update report status',
+      message: error.message
+    });
+  }
+});
+
+/**
  * PATCH /api/reports/:id
  * Update report status (Official Dashboard)
  */

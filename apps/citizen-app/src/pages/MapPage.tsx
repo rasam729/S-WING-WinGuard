@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import io from 'socket.io-client';
@@ -17,7 +17,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Bengaluru coordinates
+// India center coordinates for country-wide view
+const INDIA_CENTER: [number, number] = [20.5937, 78.9629];
+const INDIA_ZOOM = 5;
 const BENGALURU_CENTER: [number, number] = [12.9716, 77.5946];
 const DEFAULT_ZOOM = 13;
 
@@ -62,6 +64,7 @@ const MapPage: React.FC = () => {
   const [showChatbot, setShowChatbot] = useState(false);
   const [showCoordinatePicker, setShowCoordinatePicker] = useState(false);
   const [pickedCoordinates, setPickedCoordinates] = useState<[number, number] | null>(null);
+  const [pickedPlaceName, setPickedPlaceName] = useState<string>('');
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [activeRoute, setActiveRoute] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,6 +74,7 @@ const MapPage: React.FC = () => {
   const [isTrackingLocation, setIsTrackingLocation] = useState(false);
   const [currentDirection, setCurrentDirection] = useState<string>('');
   const watchIdRef = useRef<number | null>(null);
+  const mapRef = useRef<any>(null);
   
   // Route state
   const [destination, setDestination] = useState<[number, number] | null>(null);
@@ -86,12 +90,79 @@ const MapPage: React.FC = () => {
     longitude: BENGALURU_CENTER[1],
   });
 
+  // Search for places using Nominatim (OpenStreetMap)
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=in&limit=5`
+      );
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle search result selection
+  const handleSelectSearchResult = (result: any) => {
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+    
+    setHighlightedLocation([lat, lon]);
+    
+    // Fly to location
+    if (mapRef.current) {
+      mapRef.current.flyTo([lat, lon], 15, {
+        duration: 2
+      });
+    }
+    
+    setSearchResults([]);
+    setSearchQuery('');
+  };
+
+  // Reverse geocode to get place name from coordinates
+  const reverseGeocode = async (lat: number, lon: number) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+      );
+      const data = await response.json();
+      setPickedPlaceName(data.display_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
+      setPickedPlaceName(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+    }
+  };
+
+  // Toggle coordinate picker mode
+  const toggleCoordinatePicker = () => {
+    setShowCoordinatePicker(!showCoordinatePicker);
+    setPickedCoordinates(null);
+    setPickedPlaceName('');
+  };
+
+  // Map reference component
+  const MapRefSetter = () => {
+    const map = useMap();
+    useEffect(() => {
+      mapRef.current = map;
+    }, [map]);
+    return null;
+  };
+
   // Map click handler component
   const MapClickHandler = () => {
     useMapEvents({
       click: (e) => {
         if (showCoordinatePicker) {
           setPickedCoordinates([e.latlng.lat, e.latlng.lng]);
+          reverseGeocode(e.latlng.lat, e.latlng.lng);
         }
       },
     });
@@ -482,8 +553,8 @@ const MapPage: React.FC = () => {
 
       {/* Map */}
       <MapContainer
-        center={BENGALURU_CENTER}
-        zoom={DEFAULT_ZOOM}
+        center={INDIA_CENTER}
+        zoom={INDIA_ZOOM}
         className="h-full w-full"
         zoomControl={false}
       >
@@ -492,6 +563,7 @@ const MapPage: React.FC = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
+        <MapRefSetter />
         {/* Map click handler for coordinate picking */}
         <MapClickHandler />
         
@@ -655,18 +727,27 @@ const MapPage: React.FC = () => {
         <div className="max-w-2xl mx-auto space-y-4 pointer-events-auto">
           {/* Search Bar */}
           <div className="bg-white shadow-xl rounded-2xl border border-gray-200">
-            <div className="flex items-center px-5 py-4">
-              <span className="material-symbols-outlined text-gray-400 mr-3">search</span>
+            <div className="flex items-center px-5 py-4 gap-2">
+              <span className="material-symbols-outlined text-gray-400">search</span>
               <input
-                className="bg-transparent border-none focus:ring-0 w-full text-gray-800 placeholder-gray-400 font-medium outline-none"
-                placeholder="Search location in Bengaluru..."
+                className="bg-transparent border-none focus:ring-0 flex-1 text-gray-800 placeholder-gray-400 font-medium outline-none"
+                placeholder="Search any place in India (Mumbai, Delhi, Connaught Place...)..."
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
-              {isSearching && (
-                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              )}
+              <button
+                onClick={handleSearch}
+                disabled={isSearching}
+                className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-xl font-bold text-sm hover:from-cyan-700 hover:to-teal-700 transition-all disabled:opacity-50"
+              >
+                {isSearching ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  'Search'
+                )}
+              </button>
             </div>
             
             {/* Search Results Dropdown */}
@@ -675,11 +756,11 @@ const MapPage: React.FC = () => {
                 {searchResults.map((result, idx) => (
                   <button
                     key={idx}
-                    onClick={() => handleSearchSelect(result)}
-                    className="w-full text-left px-5 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                    onClick={() => handleSelectSearchResult(result)}
+                    className="w-full text-left px-5 py-3 hover:bg-cyan-50 transition-colors border-b border-gray-100 last:border-b-0"
                   >
                     <div className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-blue-600 mt-0.5">location_on</span>
+                      <span className="material-symbols-outlined text-cyan-600 mt-0.5">location_on</span>
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900 text-sm">{result.display_name.split(',')[0]}</p>
                         <p className="text-xs text-gray-500 mt-0.5">{result.display_name}</p>
@@ -690,6 +771,26 @@ const MapPage: React.FC = () => {
               </div>
             )}
           </div>
+          
+          {/* Coordinate Picker Info */}
+          {showCoordinatePicker && pickedCoordinates && (
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-xl rounded-2xl p-4">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-2xl">location_on</span>
+                <div className="flex-1">
+                  <p className="font-bold text-sm mb-1">Selected Location</p>
+                  <p className="text-xs opacity-90 mb-1">
+                    📍 {pickedCoordinates[0].toFixed(6)}, {pickedCoordinates[1].toFixed(6)}
+                  </p>
+                  {pickedPlaceName && (
+                    <p className="text-xs opacity-90">
+                      📌 {pickedPlaceName}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
