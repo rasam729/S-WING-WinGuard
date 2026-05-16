@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Clarendon:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import './professional-dark.css';
 
 @tailwind base;
 @tailwind components;
@@ -67,10 +68,14 @@
   }
   
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Apply traffic pattern background to body */
+  body {
+    @apply traffic-bg text-gray-900 antialiased;
   }
 
   html, body, #root {

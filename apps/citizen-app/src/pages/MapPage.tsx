@@ -90,19 +90,43 @@ const MapPage: React.FC = () => {
     longitude: BENGALURU_CENTER[1],
   });
 
-  // Search for places using Nominatim (OpenStreetMap)
+  // Enhanced search for places using Nominatim (OpenStreetMap) - Google Maps style
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
     setIsSearching(true);
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=in&limit=5`
+      // Try multiple search strategies for better results
+      const searches = [
+        // Primary search with India filter
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=in&limit=5&addressdetails=1`),
+        // Backup search without country filter for better coverage
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery + ', India')}&limit=3&addressdetails=1`)
+      ];
+      
+      const responses = await Promise.all(searches);
+      const results1 = await responses[0].json();
+      const results2 = await responses[1].json();
+      
+      // Combine and deduplicate results
+      const allResults = [...results1, ...results2];
+      const uniqueResults = allResults.filter((result, index, self) =>
+        index === self.findIndex((r) => r.place_id === result.place_id)
       );
-      const data = await response.json();
-      setSearchResults(data);
+      
+      setSearchResults(uniqueResults.slice(0, 8)); // Show top 8 results
     } catch (error) {
       console.error('Search error:', error);
+      // Fallback to basic search
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5`
+        );
+        const data = await response.json();
+        setSearchResults(data);
+      } catch (fallbackError) {
+        console.error('Fallback search error:', fallbackError);
+      }
     } finally {
       setIsSearching(false);
     }

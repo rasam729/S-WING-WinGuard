@@ -1,0 +1,560 @@
+/* Professional Balanced Theme with Traffic Elements */
+
+:root {
+  /* Balanced Theme Colors - Mix of Light and Dark */
+  --bg-primary: #0d1f2d; /* Dark cyan-green base */
+  --bg-secondary: #f8fafc; /* Light cards */
+  --bg-tertiary: #ffffff; /* Pure white for contrast */
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --bg-pattern: #0a1a26; /* Darker cyan for pattern */
+  
+  /* Traffic Theme Colors */
+  --traffic-red: #dc2626;
+  --traffic-yellow: #fbbf24;
+  --traffic-green: #10b981;
+  --road-dark: #1e3a4c;
+  --road-line: #64748b;
+  --cone-orange: #fb923c;
+  
+  /* Accent Colors - Cyan-Green and Orange */
+  --accent-cyan: #0891b2;
+  --accent-teal: #0d9488;
+  --accent-orange: #fb923c;
+  --accent-orange-light: #fed7aa;
+  
+  /* Text Colors */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-on-dark: #f1f5f9;
+}
+
+/* Cyan-Green Pattern Background */
+.traffic-bg {
+  background: 
+    linear-gradient(135deg, 
+      #0d1f2d 0%, 
+      #0a1a26 25%,
+      #0d2838 50%,
+      #0a1a26 75%,
+      #0d1f2d 100%
+    );
+  position: relative;
+}
+
+/* Geometric Pattern Overlay */
+.traffic-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    /* Diagonal lines */
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 40px,
+      rgba(8, 145, 178, 0.03) 40px,
+      rgba(8, 145, 178, 0.03) 42px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 40px,
+      rgba(13, 148, 136, 0.03) 40px,
+      rgba(13, 148, 136, 0.03) 42px
+    ),
+    /* Dots pattern */
+    radial-gradient(circle at 20% 50%, rgba(8, 145, 178, 0.05) 1px, transparent 1px),
+    radial-gradient(circle at 80% 50%, rgba(13, 148, 136, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 50px 50px, 50px 50px;
+  background-position: 0 0, 0 0, 0 0, 25px 25px;
+  pointer-events: none;
+}
+
+/* Road Stripe Pattern for Headers */
+.road-pattern {
+  background: 
+    linear-gradient(90deg, 
+      rgba(30, 58, 76, 0.3) 0%, 
+      rgba(30, 58, 76, 0.3) 45%, 
+      rgba(100, 116, 139, 0.2) 45%, 
+      rgba(100, 116, 139, 0.2) 55%, 
+      rgba(30, 58, 76, 0.3) 55%, 
+      rgba(30, 58, 76, 0.3) 100%
+    );
+  background-size: 80px 3px;
+  background-repeat: repeat-x;
+  background-position: bottom;
+}
+
+/* Professional Light Card Styles */
+.pro-card {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.98) 0%, 
+    rgba(248, 250, 252, 0.98) 100%
+  );
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  border-radius: 6px;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.08),
+    0 2px 4px -1px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.pro-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, 
+    var(--accent-cyan) 0%, 
+    var(--accent-teal) 50%,
+    var(--accent-orange) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.pro-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.12),
+    0 4px 6px -2px rgba(0, 0, 0, 0.08);
+  border-color: rgba(8, 145, 178, 0.4);
+}
+
+.pro-card:hover::before {
+  opacity: 1;
+}
+
+/* Geometric Button Styles with Orange Accent */
+.pro-button {
+  background: linear-gradient(135deg, 
+    rgba(8, 145, 178, 0.95) 0%, 
+    rgba(13, 148, 136, 0.95) 100%
+  );
+  border: 1px solid rgba(8, 145, 178, 0.6);
+  border-radius: 4px;
+  padding: 12px 24px;
+  font-weight: 600;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pro-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.3), 
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.pro-button:hover::before {
+  left: 100%;
+}
+
+.pro-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(8, 145, 178, 0.3);
+  border-color: rgba(8, 145, 178, 0.8);
+}
+
+/* Orange Accent Button */
+.pro-button-orange {
+  background: linear-gradient(135deg, 
+    rgba(251, 146, 60, 0.95) 0%, 
+    rgba(249, 115, 22, 0.95) 100%
+  );
+  border: 1px solid rgba(251, 146, 60, 0.6);
+  color: white;
+}
+
+.pro-button-orange:hover {
+  box-shadow: 0 6px 12px rgba(251, 146, 60, 0.3);
+  border-color: rgba(251, 146, 60, 0.8);
+}
+
+/* Traffic Light Indicator */
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 
+    0 0 10px currentColor,
+    inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* Angular Dividers with Orange Accent */
+.angular-divider {
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    var(--accent-cyan) 30%,
+    var(--accent-orange) 70%,
+    transparent 100%
+  );
+  position: relative;
+}
+
+.angular-divider::before,
+.angular-divider::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-orange);
+  transform: rotate(45deg);
+  top: -2px;
+}
+
+.angular-divider::before {
+  left: 50%;
+  margin-left: -20px;
+}
+
+.angular-divider::after {
+  left: 50%;
+  margin-left: 14px;
+}
+
+/* Search Bar Professional Style */
+.pro-search {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.98) 0%, 
+    rgba(248, 250, 252, 0.98) 100%
+  );
+  border: 2px solid rgba(203, 213, 225, 0.6);
+  border-radius: 6px;
+  padding: 14px 20px;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.pro-search:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 
+    0 0 0 3px rgba(8, 145, 178, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.06);
+  outline: none;
+  background: white;
+}
+
+.pro-search::placeholder {
+  color: var(--text-muted);
+}
+
+/* Status Badge Styles */
+.status-badge {
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid;
+  position: relative;
+  overflow: hidden;
+}
+
+.status-critical {
+  background: linear-gradient(135deg, 
+    rgba(220, 38, 38, 0.15) 0%, 
+    rgba(185, 28, 28, 0.15) 100%
+  );
+  border-color: var(--traffic-red);
+  color: #991b1b;
+}
+
+.status-progress {
+  background: linear-gradient(135deg, 
+    rgba(59, 130, 246, 0.15) 0%, 
+    rgba(37, 99, 235, 0.15) 100%
+  );
+  border-color: #3b82f6;
+  color: #1e40af;
+}
+
+.status-resolved {
+  background: linear-gradient(135deg, 
+    rgba(16, 185, 129, 0.15) 0%, 
+    rgba(5, 150, 105, 0.15) 100%
+  );
+  border-color: var(--traffic-green);
+  color: #065f46;
+}
+
+/* Sidebar Professional Style - Light with Dark Pattern BG */
+.pro-sidebar {
+  background: linear-gradient(180deg, 
+    rgba(255, 255, 255, 0.98) 0%, 
+    rgba(248, 250, 252, 0.98) 100%
+  );
+  border-right: 1px solid rgba(203, 213, 225, 0.6);
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.05);
+}
+
+.pro-sidebar-item {
+  background: transparent;
+  border-left: 3px solid transparent;
+  border-radius: 0 4px 4px 0;
+  padding: 12px 16px;
+  margin: 4px 8px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.pro-sidebar-item:hover {
+  background: rgba(8, 145, 178, 0.08);
+  color: var(--text-primary);
+}
+
+.pro-sidebar-item.active {
+  background: linear-gradient(90deg, 
+    rgba(8, 145, 178, 0.15) 0%, 
+    rgba(8, 145, 178, 0.05) 100%
+  );
+  border-left-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+/* Orange accent for special items */
+.pro-sidebar-item.orange-accent:hover {
+  background: rgba(251, 146, 60, 0.08);
+}
+
+.pro-sidebar-item.orange-accent.active {
+  background: linear-gradient(90deg, 
+    rgba(251, 146, 60, 0.15) 0%, 
+    rgba(251, 146, 60, 0.05) 100%
+  );
+  border-left-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+/* Header Professional Style - Light on Dark Pattern */
+.pro-header {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.98) 0%, 
+    rgba(248, 250, 252, 0.98) 100%
+  );
+  border-bottom: 1px solid rgba(203, 213, 225, 0.6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Stats Card with Orange Accent */
+.stats-card {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.98) 0%, 
+    rgba(248, 250, 252, 0.98) 100%
+  );
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  border-radius: 6px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, 
+    var(--accent-cyan), 
+    var(--accent-teal),
+    var(--accent-orange)
+  );
+}
+
+.stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Icon Container with Orange Accent */
+.icon-container {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, 
+    rgba(8, 145, 178, 0.1) 0%, 
+    rgba(251, 146, 60, 0.1) 100%
+  );
+  border: 1px solid rgba(8, 145, 178, 0.3);
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.icon-container:hover {
+  background: linear-gradient(135deg, 
+    rgba(8, 145, 178, 0.15) 0%, 
+    rgba(251, 146, 60, 0.15) 100%
+  );
+  border-color: var(--accent-orange);
+  transform: scale(1.05);
+}
+
+/* Dropdown Menu - Light */
+.pro-dropdown {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.98) 0%, 
+    rgba(248, 250, 252, 0.98) 100%
+  );
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  border-radius: 6px;
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.pro-dropdown-item {
+  padding: 12px 16px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.pro-dropdown-item:hover {
+  background: rgba(8, 145, 178, 0.08);
+  border-left-color: var(--accent-cyan);
+  color: var(--text-primary);
+}
+
+/* Loading Spinner with Cyan-Orange */
+.pro-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(8, 145, 178, 0.2);
+  border-top-color: var(--accent-cyan);
+  border-right-color: var(--accent-orange);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Tooltip - Light */
+.pro-tooltip {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.98) 0%, 
+    rgba(248, 250, 252, 0.98) 100%
+  );
+  border: 1px solid rgba(8, 145, 178, 0.4);
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, 
+    var(--accent-cyan), 
+    var(--accent-orange)
+  );
+  border-radius: 5px;
+  border: 2px solid rgba(241, 245, 249, 0.5);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, 
+    var(--accent-teal), 
+    var(--cone-orange)
+  );
+}
+
+/* Selection with Orange */
+::selection {
+  background: rgba(251, 146, 60, 0.3);
+  color: var(--text-primary);
+}
+
+/* Traffic Cone Decoration */
+.traffic-cone {
+  position: relative;
+  display: inline-block;
+}
+
+.traffic-cone::before {
+  content: '🚧';
+  font-size: 1.2em;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Floating Card with Shadow */
+.floating-card {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.95) 0%, 
+    rgba(248, 250, 252, 0.95) 100%
+  );
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  border-radius: 8px;
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.1),
+    0 4px 10px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(10px);
+}
+
+/* Accent Line */
+.accent-line {
+  height: 3px;
+  background: linear-gradient(90deg, 
+    var(--accent-cyan) 0%,
+    var(--accent-teal) 50%,
+    var(--accent-orange) 100%
+  );
+  border-radius: 2px;
+}
