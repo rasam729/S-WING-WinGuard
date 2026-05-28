@@ -20,13 +20,13 @@ export default function ReportsPage() {
   const navigate = useNavigate();
   const { logout, token } = useAuthStore(); // Get token from hook
   
-  const [reports, setReports] = useState<Report[]>([]);
+  const [allReports, setAllReports] = useState<Report[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchReports();
-  }, []); // Remove filter dependency since we're not using it anymore
+  }, []);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -42,7 +42,7 @@ export default function ReportsPage() {
       
       if (data.success && data.data && data.data.reports) {
         console.log('Setting reports:', data.data.reports);
-        setReports(data.data.reports);
+        setAllReports(data.data.reports);
       } else {
         console.error('Invalid data structure:', data);
       }
@@ -52,6 +52,27 @@ export default function ReportsPage() {
       setLoading(false);
     }
   };
+
+  // Filter reports based on selected filter
+  const filteredReports = allReports.filter(report => {
+    if (filter === 'all') return true;
+    
+    const status = report.status.toLowerCase();
+    
+    if (filter === 'pending') {
+      return status === 'report received' || status === 'pending';
+    }
+    
+    if (filter === 'in_progress') {
+      return status === 'in progress';
+    }
+    
+    if (filter === 'resolved') {
+      return status === 'resolved';
+    }
+    
+    return true;
+  });
 
   const handleLogout = () => {
     logout();
@@ -151,7 +172,7 @@ export default function ReportsPage() {
                 <p className="text-sm text-gray-600 mt-1">View and manage all submitted reports</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-700">{reports.length} Reports</span>
+                <span className="text-sm font-bold text-gray-700">{filteredReports.length} Reports</span>
               </div>
             </div>
           </div>
@@ -207,7 +228,7 @@ export default function ReportsPage() {
             <div className="flex items-center justify-center py-20">
               <div className="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
-          ) : reports.length === 0 ? (
+          ) : filteredReports.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-200">
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1z"/>
@@ -217,7 +238,7 @@ export default function ReportsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {reports.map((report) => (
+              {filteredReports.map((report) => (
                 <div
                   key={report.report_id}
                   className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"

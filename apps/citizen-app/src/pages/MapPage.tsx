@@ -510,25 +510,25 @@ const MapPage: React.FC = () => {
   return (
     <div className="relative h-screen w-full bg-gray-50 overflow-hidden">
       {/* Modern Header with Glass Effect */}
-      <header className="absolute top-0 left-0 right-0 z-[1000] bg-white/80 backdrop-blur-xl shadow-lg border-b border-gray-200">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
+      <header className="pro-header absolute top-0 left-0 right-0 z-[1000] bg-white/80 backdrop-blur-xl shadow-lg border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-4 mobile-px-3 mobile-py-2">
+          <div className="flex items-center gap-3 mobile-gap-2">
             <img 
               src="/WinGuard_Logo.png" 
               alt="WinGuard Logo" 
               className="h-12 w-auto drop-shadow-lg"
             />
-            <div>
-              <h1 className="text-2xl font-bold">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold mobile-text-wrap">
                 <span className="bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent">Win</span>
                 <span className="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Guard</span>
               </h1>
-              <p className="text-xs text-gray-500 font-medium">
+              <p className="text-xs text-gray-500 font-medium truncate">
                 Welcome, {user?.fullName || 'User'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mobile-gap-2 flex-shrink-0">
             <button
               onClick={() => {
                 setShowCoordinatePicker(!showCoordinatePicker);
@@ -540,6 +540,7 @@ const MapPage: React.FC = () => {
                 showCoordinatePicker ? 'bg-purple-100' : 'hover:bg-purple-50'
               }`}
               title="Pick Coordinates"
+              aria-label="Pick Coordinates"
             >
               <span className={`material-symbols-outlined group-hover:scale-110 transition-transform ${
                 showCoordinatePicker ? 'text-purple-600' : 'text-purple-600'
@@ -551,6 +552,7 @@ const MapPage: React.FC = () => {
               onClick={() => setShowNavigationEngine(true)}
               className="p-3 hover:bg-blue-50 rounded-xl transition-all duration-200 group"
               title="Guardian Path Navigator"
+              aria-label="Navigation"
             >
               <span className="material-symbols-outlined text-blue-600 group-hover:scale-110 transition-transform">explore</span>
             </button>
@@ -558,6 +560,7 @@ const MapPage: React.FC = () => {
               onClick={() => setShowNotifications(!showNotifications)}
               className="relative p-3 hover:bg-gray-100 rounded-xl transition-all duration-200"
               title="Notifications"
+              aria-label="Notifications"
             >
               <span className="material-symbols-outlined text-gray-700">notifications</span>
               {notifications.length > 0 && (
@@ -566,8 +569,9 @@ const MapPage: React.FC = () => {
             </button>
             <button
               onClick={logout}
-              className="p-3 hover:bg-red-50 rounded-xl transition-all duration-200 group"
+              className="p-3 hover:bg-red-50 rounded-xl transition-all duration-200 group mobile-hidden"
               title="Logout"
+              aria-label="Logout"
             >
               <span className="material-symbols-outlined text-red-600 group-hover:scale-110 transition-transform">logout</span>
             </button>
@@ -747,15 +751,15 @@ const MapPage: React.FC = () => {
       </MapContainer>
 
       {/* Modern Floating Search */}
-      <div className="absolute top-24 left-0 right-0 px-6 z-[999] pointer-events-none">
+      <div className="absolute top-24 left-0 right-0 px-6 z-[999] pointer-events-none mobile-px-3">
         <div className="max-w-2xl mx-auto space-y-4 pointer-events-auto">
           {/* Search Bar */}
-          <div className="bg-white shadow-xl rounded-2xl border border-gray-200">
-            <div className="flex items-center px-5 py-4 gap-2">
-              <span className="material-symbols-outlined text-gray-400">search</span>
+          <div className="bg-white shadow-xl rounded-2xl border border-gray-200 mobile-rounded">
+            <div className="flex items-center px-5 py-4 gap-2 mobile-px-3 mobile-py-2 mobile-gap-2">
+              <span className="material-symbols-outlined text-gray-400 flex-shrink-0">search</span>
               <input
-                className="bg-transparent border-none focus:ring-0 flex-1 text-gray-800 placeholder-gray-400 font-medium outline-none"
-                placeholder="Search any place in India (Mumbai, Delhi, Connaught Place...)..."
+                className="pro-search bg-transparent border-none focus:ring-0 flex-1 text-gray-800 placeholder-gray-400 font-medium outline-none min-w-0"
+                placeholder="Search any place in India..."
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -764,7 +768,8 @@ const MapPage: React.FC = () => {
               <button
                 onClick={handleSearch}
                 disabled={isSearching}
-                className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-xl font-bold text-sm hover:from-cyan-700 hover:to-teal-700 transition-all disabled:opacity-50"
+                className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-xl font-bold text-sm hover:from-cyan-700 hover:to-teal-700 transition-all disabled:opacity-50 flex-shrink-0"
+                aria-label="Search"
               >
                 {isSearching ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -776,18 +781,18 @@ const MapPage: React.FC = () => {
             
             {/* Search Results Dropdown */}
             {searchResults.length > 0 && (
-              <div className="border-t border-gray-200 max-h-64 overflow-y-auto">
+              <div className="search-results-dropdown border-t border-gray-200 max-h-64 overflow-y-auto">
                 {searchResults.map((result, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleSelectSearchResult(result)}
-                    className="w-full text-left px-5 py-3 hover:bg-cyan-50 transition-colors border-b border-gray-100 last:border-b-0"
+                    className="w-full text-left px-5 py-3 hover:bg-cyan-50 transition-colors border-b border-gray-100 last:border-b-0 mobile-px-3 mobile-py-2"
                   >
-                    <div className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-cyan-600 mt-0.5">location_on</span>
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 text-sm">{result.display_name.split(',')[0]}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{result.display_name}</p>
+                    <div className="flex items-start gap-3 mobile-gap-2">
+                      <span className="material-symbols-outlined text-cyan-600 mt-0.5 flex-shrink-0">location_on</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm mobile-text-xs truncate">{result.display_name.split(',')[0]}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate mobile-text-wrap">{result.display_name}</p>
                       </div>
                     </div>
                   </button>
@@ -798,16 +803,16 @@ const MapPage: React.FC = () => {
           
           {/* Coordinate Picker Info */}
           {showCoordinatePicker && pickedCoordinates && (
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-xl rounded-2xl p-4">
-              <div className="flex items-start gap-3">
-                <span className="material-symbols-outlined text-2xl">location_on</span>
-                <div className="flex-1">
+            <div className="coordinate-info-banner bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-xl rounded-2xl p-4 mobile-rounded mobile-compact">
+              <div className="flex items-start gap-3 mobile-gap-2">
+                <span className="material-symbols-outlined text-2xl flex-shrink-0">location_on</span>
+                <div className="flex-1 min-w-0">
                   <p className="font-bold text-sm mb-1">Selected Location</p>
-                  <p className="text-xs opacity-90 mb-1">
+                  <p className="text-xs opacity-90 mb-1 truncate">
                     📍 {pickedCoordinates[0].toFixed(6)}, {pickedCoordinates[1].toFixed(6)}
                   </p>
                   {pickedPlaceName && (
-                    <p className="text-xs opacity-90">
+                    <p className="text-xs opacity-90 mobile-text-wrap">
                       📌 {pickedPlaceName}
                     </p>
                   )}
@@ -819,11 +824,12 @@ const MapPage: React.FC = () => {
       </div>
 
       {/* Modern Floating Action Buttons */}
-      <div className="absolute bottom-28 right-6 flex flex-col gap-3 z-[999]">
+      <div className="floating-action-buttons absolute bottom-28 right-6 flex flex-col gap-3 z-[999]">
         {isTrackingLocation ? (
           <button
             onClick={stopLocationTracking}
             className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 shadow-xl flex items-center justify-center text-white hover:scale-105 transition-transform duration-200 hover:shadow-2xl animate-pulse"
+            aria-label="Stop Location Tracking"
           >
             <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               gps_off
@@ -833,6 +839,7 @@ const MapPage: React.FC = () => {
           <button
             onClick={startLocationTracking}
             className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 shadow-xl flex items-center justify-center text-white hover:scale-105 transition-transform duration-200 hover:shadow-2xl"
+            aria-label="Start Location Tracking"
           >
             <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               gps_fixed
@@ -844,6 +851,7 @@ const MapPage: React.FC = () => {
           onClick={() => setShowChatbot(true)}
           className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-xl flex items-center justify-center text-white hover:scale-105 transition-transform duration-200 hover:shadow-2xl relative group"
           title="Viosa AI Assistant"
+          aria-label="Viosa AI Assistant"
         >
           <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -853,6 +861,7 @@ const MapPage: React.FC = () => {
         <button
           onClick={getUserLocation}
           className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-xl flex items-center justify-center text-white hover:scale-105 transition-transform duration-200 hover:shadow-2xl"
+          aria-label="Get My Location"
         >
           <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
             my_location
@@ -862,13 +871,13 @@ const MapPage: React.FC = () => {
 
       {/* Real-time Direction Display */}
       {isTrackingLocation && currentDirection && (
-        <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-[999] pointer-events-auto">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-2xl shadow-2xl border-2 border-white animate-slide-down">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-3xl animate-pulse">navigation</span>
-              <div>
+        <div className="direction-display absolute top-32 left-1/2 transform -translate-x-1/2 z-[999] pointer-events-auto">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-2xl shadow-2xl border-2 border-white animate-slide-down mobile-compact mobile-rounded">
+            <div className="flex items-center gap-3 mobile-gap-2">
+              <span className="material-symbols-outlined text-3xl animate-pulse flex-shrink-0">navigation</span>
+              <div className="min-w-0">
                 <p className="text-xs font-bold opacity-80 uppercase">Next Direction</p>
-                <p className="text-lg font-bold">{currentDirection}</p>
+                <p className="text-lg font-bold mobile-text-sm mobile-text-wrap">{currentDirection}</p>
               </div>
             </div>
           </div>
@@ -876,31 +885,31 @@ const MapPage: React.FC = () => {
       )}
 
       {/* Modern Legend */}
-      <div className="absolute bottom-28 left-6 z-[999]">
-        <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 max-w-[240px]">
+      <div className="map-legend absolute bottom-28 left-6 z-[999]">
+        <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 max-w-[240px] mobile-rounded mobile-compact">
           <h3 className="font-bold text-xs text-gray-500 mb-3 uppercase tracking-wider">
             Map Legend
           </h3>
           <div className="space-y-2.5">
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-green-500 shadow-sm"></div>
-              <span className="text-sm text-gray-700 font-medium">Safe / Resolved</span>
+            <div className="flex items-center gap-3 mobile-gap-2">
+              <div className="w-4 h-4 rounded-full bg-green-500 shadow-sm flex-shrink-0"></div>
+              <span className="text-sm text-gray-700 font-medium mobile-text-xs">Safe / Resolved</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-orange-400 shadow-sm"></div>
-              <span className="text-sm text-gray-700 font-medium">Moderate Risk</span>
+            <div className="flex items-center gap-3 mobile-gap-2">
+              <div className="w-4 h-4 rounded-full bg-orange-400 shadow-sm flex-shrink-0"></div>
+              <span className="text-sm text-gray-700 font-medium mobile-text-xs">Moderate Risk</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-red-500 shadow-sm"></div>
-              <span className="text-sm text-gray-700 font-medium">High Risk</span>
+            <div className="flex items-center gap-3 mobile-gap-2">
+              <div className="w-4 h-4 rounded-full bg-red-500 shadow-sm flex-shrink-0"></div>
+              <span className="text-sm text-gray-700 font-medium mobile-text-xs">High Risk</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-blue-500 shadow-sm"></div>
-              <span className="text-sm text-gray-700 font-medium">👮 Police Booth</span>
+            <div className="flex items-center gap-3 mobile-gap-2">
+              <div className="w-4 h-4 rounded-full bg-blue-500 shadow-sm flex-shrink-0"></div>
+              <span className="text-sm text-gray-700 font-medium mobile-text-xs">👮 Police Booth</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-pink-500 shadow-sm"></div>
-              <span className="text-sm text-gray-700 font-medium">🏥 Hospital</span>
+            <div className="flex items-center gap-3 mobile-gap-2">
+              <div className="w-4 h-4 rounded-full bg-pink-500 shadow-sm flex-shrink-0"></div>
+              <span className="text-sm text-gray-700 font-medium mobile-text-xs">🏥 Hospital</span>
             </div>
           </div>
         </div>
@@ -908,28 +917,29 @@ const MapPage: React.FC = () => {
 
       {/* Modern Notifications Panel */}
       {showNotifications && (
-        <div className="absolute top-20 right-6 w-96 max-h-[500px] bg-white rounded-2xl shadow-2xl z-[1001] overflow-hidden border border-gray-200">
-          <div className="p-5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
+        <div className="notifications-panel absolute top-20 right-6 w-96 max-h-[500px] bg-white rounded-2xl shadow-2xl z-[1001] overflow-hidden border border-gray-200 mobile-rounded">
+          <div className="p-5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white mobile-compact">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">Notifications</h2>
+              <h2 className="text-lg font-bold mobile-text-sm">Notifications</h2>
               <button
                 onClick={() => setShowNotifications(false)}
                 className="p-1 hover:bg-white/20 rounded-lg transition-colors"
+                aria-label="Close Notifications"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
           </div>
-          <div className="overflow-y-auto max-h-[400px] p-4 space-y-3">
+          <div className="overflow-y-auto max-h-[400px] p-4 space-y-3 mobile-compact">
             {notifications.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No new notifications</p>
+              <p className="text-center text-gray-500 py-8 mobile-text-sm">No new notifications</p>
             ) : (
               notifications.map((notif) => (
                 <div
                   key={notif.notification_id}
-                  className="p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-blue-300 transition-colors"
+                  className="p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-blue-300 transition-colors mobile-compact mobile-rounded"
                 >
-                  <p className="text-sm text-gray-800 font-medium">{notif.message}</p>
+                  <p className="text-sm text-gray-800 font-medium mobile-text-xs mobile-text-wrap">{notif.message}</p>
                   <p className="text-xs text-gray-500 mt-2">
                     {new Date(notif.sent_at).toLocaleString()}
                   </p>
@@ -949,39 +959,44 @@ const MapPage: React.FC = () => {
       />
 
       {/* Modern Bottom Navigation */}
-      <nav className="absolute bottom-0 left-0 right-0 z-[1000] bg-white shadow-2xl rounded-t-3xl border-t border-gray-200">
-        <div className="flex justify-around items-center px-4 py-4">
+      <nav className="bottom-nav absolute bottom-0 left-0 right-0 z-[1000] bg-white shadow-2xl rounded-t-3xl border-t border-gray-200">
+        <div className="flex justify-around items-center px-4 py-4 mobile-px-3 mobile-py-2">
           <button
             onClick={() => navigate('/map')}
-            className="flex flex-col items-center bg-blue-50 text-blue-600 rounded-2xl px-4 py-2 transition-all"
+            className="flex flex-col items-center bg-blue-50 text-blue-600 rounded-2xl px-4 py-2 transition-all mobile-rounded"
+            aria-label="Map"
           >
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>map</span>
             <span className="text-xs font-bold mt-1">Map</span>
           </button>
           <button
             onClick={() => navigate('/report')}
-            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gradient-to-r hover:from-red-50 hover:to-orange-50 rounded-2xl transition-all group"
+            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gradient-to-r hover:from-red-50 hover:to-orange-50 rounded-2xl transition-all group mobile-rounded"
+            aria-label="Report"
           >
             <span className="material-symbols-outlined text-red-600 group-hover:scale-110 transition-transform">add_circle</span>
             <span className="text-xs font-bold mt-1 text-red-600">Report</span>
           </button>
           <button
             onClick={() => navigate('/alerts')}
-            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gray-50 rounded-2xl transition-all"
+            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gray-50 rounded-2xl transition-all mobile-rounded"
+            aria-label="Alerts"
           >
             <span className="material-symbols-outlined">notifications</span>
             <span className="text-xs font-bold mt-1">Alerts</span>
           </button>
           <button
             onClick={() => navigate('/stats')}
-            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gray-50 rounded-2xl transition-all"
+            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gray-50 rounded-2xl transition-all mobile-rounded"
+            aria-label="Stats"
           >
             <span className="material-symbols-outlined">analytics</span>
             <span className="text-xs font-bold mt-1">Stats</span>
           </button>
           <button
             onClick={() => navigate('/profile')}
-            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gray-50 rounded-2xl transition-all"
+            className="flex flex-col items-center text-gray-500 px-4 py-2 hover:bg-gray-50 rounded-2xl transition-all mobile-rounded"
+            aria-label="Profile"
           >
             <span className="material-symbols-outlined">person</span>
             <span className="text-xs font-bold mt-1">Profile</span>
@@ -1000,35 +1015,36 @@ const MapPage: React.FC = () => {
 
       {/* Coordinate Picker Panel */}
       {showCoordinatePicker && (
-        <div className="absolute top-32 left-6 z-[999] pointer-events-auto">
-          <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 w-80">
+        <div className="coordinate-picker-panel absolute top-32 left-6 z-[999] pointer-events-auto">
+          <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 w-80 mobile-rounded mobile-compact">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2">
-                <span className="material-symbols-outlined text-purple-600">pin_drop</span>
-                Pick Coordinates
+              <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2 mobile-text-xs">
+                <span className="material-symbols-outlined text-purple-600 flex-shrink-0">pin_drop</span>
+                <span className="mobile-text-wrap">Pick Coordinates</span>
               </h3>
               <button
                 onClick={() => {
                   setShowCoordinatePicker(false);
                   setPickedCoordinates(null);
                 }}
-                className="p-1 hover:bg-red-50 rounded-lg transition-colors"
+                className="p-1 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                aria-label="Close"
               >
                 <span className="material-symbols-outlined text-red-600 text-sm">close</span>
               </button>
             </div>
             
-            <p className="text-xs text-gray-600 mb-4 bg-purple-50 p-3 rounded-xl border border-purple-200">
+            <p className="text-xs text-gray-600 mb-4 bg-purple-50 p-3 rounded-xl border border-purple-200 mobile-text-wrap">
               📍 Click anywhere on the map to get coordinates
             </p>
             
             {pickedCoordinates ? (
               <div className="space-y-3">
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200 mobile-compact mobile-rounded">
                   <p className="text-xs text-gray-600 mb-1">Latitude</p>
-                  <p className="font-bold text-lg text-gray-900">{pickedCoordinates[0].toFixed(6)}</p>
+                  <p className="font-bold text-lg text-gray-900 mobile-text-sm mobile-text-wrap">{pickedCoordinates[0].toFixed(6)}</p>
                   <p className="text-xs text-gray-600 mt-2 mb-1">Longitude</p>
-                  <p className="font-bold text-lg text-gray-900">{pickedCoordinates[1].toFixed(6)}</p>
+                  <p className="font-bold text-lg text-gray-900 mobile-text-sm mobile-text-wrap">{pickedCoordinates[1].toFixed(6)}</p>
                 </div>
                 
                 <button
@@ -1036,7 +1052,8 @@ const MapPage: React.FC = () => {
                     navigator.clipboard.writeText(`${pickedCoordinates[0].toFixed(6)}, ${pickedCoordinates[1].toFixed(6)}`);
                     alert('Coordinates copied to clipboard!');
                   }}
-                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2 mobile-rounded"
+                  aria-label="Copy Coordinates"
                 >
                   <span className="material-symbols-outlined text-sm">content_copy</span>
                   Copy Coordinates
@@ -1045,7 +1062,7 @@ const MapPage: React.FC = () => {
             ) : (
               <div className="text-center py-8">
                 <span className="material-symbols-outlined text-gray-300 text-6xl mb-2">location_searching</span>
-                <p className="text-sm text-gray-500">Waiting for map click...</p>
+                <p className="text-sm text-gray-500 mobile-text-xs">Waiting for map click...</p>
               </div>
             )}
           </div>
@@ -1054,39 +1071,40 @@ const MapPage: React.FC = () => {
 
       {/* Modern Route Info Panel - Shows active route details */}
       {activeRoute && routeStats && (
-        <div className="absolute top-32 right-6 z-[999] pointer-events-auto">
-          <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 w-80">
+        <div className="route-info-panel absolute top-32 right-6 z-[999] pointer-events-auto">
+          <div className="bg-white shadow-xl p-5 rounded-2xl border border-gray-200 w-80 mobile-rounded mobile-compact">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2">
-                <span className="material-symbols-outlined" style={{ color: activeRoute.color }}>route</span>
-                {activeRoute.name || 'Active Route'}
+              <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2 mobile-text-xs min-w-0">
+                <span className="material-symbols-outlined flex-shrink-0" style={{ color: activeRoute.color }}>route</span>
+                <span className="truncate">{activeRoute.name || 'Active Route'}</span>
               </h3>
               <button
                 onClick={clearRoute}
-                className="p-1 hover:bg-red-50 rounded-lg transition-colors"
+                className="p-1 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                aria-label="Clear Route"
               >
                 <span className="material-symbols-outlined text-red-600 text-sm">close</span>
               </button>
             </div>
             
             {/* Prominent Time Display */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl mb-3 border-2 border-blue-200">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl mb-3 border-2 border-blue-200 mobile-compact mobile-rounded">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-blue-600 font-bold uppercase mb-1">Estimated Time</p>
-                  <p className="text-4xl font-bold text-blue-900">{routeStats.estimatedMinutes}</p>
-                  <p className="text-sm text-blue-600 font-medium">minutes</p>
+                  <p className="text-4xl font-bold text-blue-900 mobile-text-2xl">{routeStats.estimatedMinutes}</p>
+                  <p className="text-sm text-blue-600 font-medium mobile-text-xs">minutes</p>
                 </div>
-                <span className="material-symbols-outlined text-blue-600 text-5xl">schedule</span>
+                <span className="material-symbols-outlined text-blue-600 text-5xl mobile-text-4xl flex-shrink-0">schedule</span>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-gray-50 to-purple-50 p-4 rounded-xl space-y-2 border border-gray-200">
-              <div className="flex justify-between text-xs">
+            <div className="bg-gradient-to-br from-gray-50 to-purple-50 p-4 rounded-xl space-y-2 border border-gray-200 mobile-compact mobile-rounded">
+              <div className="flex justify-between text-xs mobile-text-wrap">
                 <span className="text-gray-600 font-medium">Distance:</span>
                 <span className="font-bold text-gray-900">{routeStats.distanceKm || routeStats.totalDistance} km</span>
               </div>
-              <div className="flex justify-between text-xs">
+              <div className="flex justify-between text-xs mobile-text-wrap">
                 <span className="text-gray-600 font-medium">Safety Score:</span>
                 <span className={`font-bold ${
                   routeStats.avgSafetyScore >= 80 ? 'text-green-600' :
@@ -1097,7 +1115,7 @@ const MapPage: React.FC = () => {
                 </span>
               </div>
               <div className="pt-2 border-t border-gray-300">
-                <span className="text-xs font-bold text-gray-800">{routeStats.safetyRating}</span>
+                <span className="text-xs font-bold text-gray-800 mobile-text-wrap">{routeStats.safetyRating}</span>
               </div>
             </div>
           </div>

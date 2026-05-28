@@ -558,3 +558,366 @@
   );
   border-radius: 2px;
 }
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+
+/* Mobile: 0-640px (phones) */
+@media (max-width: 640px) {
+  /* Header adjustments */
+  .pro-header {
+    padding: 8px 12px !important;
+  }
+  
+  /* Reduce logo size on mobile */
+  .pro-header img {
+    height: 32px !important;
+    max-height: 32px !important;
+  }
+  
+  /* Smaller heading text */
+  .pro-header h1 {
+    font-size: 1.25rem !important;
+    line-height: 1.5rem !important;
+  }
+  
+  .pro-header p {
+    font-size: 0.65rem !important;
+  }
+  
+  /* Header buttons - smaller on mobile */
+  .pro-header button {
+    padding: 8px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+  }
+  
+  .pro-header button .material-symbols-outlined {
+    font-size: 20px !important;
+  }
+  
+  /* Search bar mobile adjustments */
+  .pro-search {
+    padding: 10px 12px !important;
+    font-size: 0.875rem !important;
+  }
+  
+  /* Floating action buttons - adjust position for mobile */
+  .floating-action-buttons {
+    bottom: 100px !important;
+    right: 12px !important;
+    gap: 8px !important;
+  }
+  
+  .floating-action-buttons button {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+  }
+  
+  .floating-action-buttons .material-symbols-outlined {
+    font-size: 24px !important;
+  }
+  
+  /* Legend - smaller on mobile */
+  .map-legend {
+    max-width: 180px !important;
+    padding: 12px !important;
+    bottom: 100px !important;
+    left: 12px !important;
+  }
+  
+  .map-legend h3 {
+    font-size: 0.65rem !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .map-legend .space-y-2\.5 {
+    gap: 6px !important;
+  }
+  
+  .map-legend span {
+    font-size: 0.75rem !important;
+  }
+  
+  .map-legend .w-4 {
+    width: 12px !important;
+    height: 12px !important;
+  }
+  
+  /* Coordinate picker panel - mobile friendly */
+  .coordinate-picker-panel {
+    width: calc(100vw - 24px) !important;
+    max-width: 320px !important;
+    left: 12px !important;
+    top: 100px !important;
+  }
+  
+  /* Route info panel - mobile friendly */
+  .route-info-panel {
+    width: calc(100vw - 24px) !important;
+    max-width: 320px !important;
+    right: 12px !important;
+    top: 100px !important;
+  }
+  
+  /* Notifications panel - full width on mobile */
+  .notifications-panel {
+    width: calc(100vw - 24px) !important;
+    max-width: 380px !important;
+    right: 12px !important;
+    top: 80px !important;
+    max-height: calc(100vh - 200px) !important;
+  }
+  
+  /* Search results dropdown - full width */
+  .search-results-dropdown {
+    max-height: 200px !important;
+  }
+  
+  .search-results-dropdown button {
+    padding: 10px 12px !important;
+  }
+  
+  .search-results-dropdown p {
+    font-size: 0.75rem !important;
+  }
+  
+  /* Bottom navigation - ensure proper spacing */
+  nav.bottom-nav {
+    padding: 12px 8px !important;
+  }
+  
+  nav.bottom-nav button {
+    padding: 8px 12px !important;
+    min-width: 60px !important;
+  }
+  
+  nav.bottom-nav .material-symbols-outlined {
+    font-size: 22px !important;
+  }
+  
+  nav.bottom-nav span.text-xs {
+    font-size: 0.65rem !important;
+  }
+  
+  /* Cards - full width with proper margins */
+  .pro-card {
+    margin: 8px !important;
+    padding: 16px !important;
+  }
+  
+  /* Stats cards - stack on mobile */
+  .stats-card {
+    padding: 16px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  /* Buttons - ensure minimum touch target */
+  button, .btn-primary, .btn-secondary, .pro-button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    padding: 10px 16px !important;
+  }
+  
+  /* Text overflow prevention */
+  h1, h2, h3, h4, h5, h6, p, span, div {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+  }
+  
+  /* Prevent horizontal scroll */
+  body, html, #root {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+  
+  /* Map container - proper height on mobile */
+  .leaflet-container {
+    height: 100vh !important;
+    width: 100vw !important;
+  }
+  
+  /* Direction display - mobile friendly */
+  .direction-display {
+    top: 80px !important;
+    left: 12px !important;
+    right: 12px !important;
+    transform: none !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+  
+  .direction-display p {
+    font-size: 0.875rem !important;
+  }
+  
+  /* Reduce padding on containers */
+  .px-6 {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+  
+  .py-4 {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+  
+  /* Adjust gap spacing */
+  .gap-3 {
+    gap: 8px !important;
+  }
+  
+  .gap-4 {
+    gap: 12px !important;
+  }
+  
+  /* Profile page adjustments */
+  .profile-header {
+    padding: 16px !important;
+  }
+  
+  .profile-avatar {
+    width: 64px !important;
+    height: 64px !important;
+    font-size: 2rem !important;
+  }
+  
+  .profile-name {
+    font-size: 1.5rem !important;
+  }
+  
+  /* Alerts page adjustments */
+  .alert-card {
+    padding: 16px !important;
+    margin: 8px !important;
+  }
+  
+  .alert-icon {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  
+  /* Form inputs - proper sizing */
+  input, textarea, select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 12px !important;
+  }
+  
+  /* Modal/Panel overlays */
+  .modal-overlay {
+    padding: 12px !important;
+  }
+  
+  /* Ensure proper z-index stacking */
+  header {
+    z-index: 1000 !important;
+  }
+  
+  .floating-elements {
+    z-index: 999 !important;
+  }
+  
+  nav {
+    z-index: 1000 !important;
+  }
+  
+  /* Fix for coordinate picker info banner */
+  .coordinate-info-banner {
+    left: 12px !important;
+    right: 12px !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+}
+
+/* Tablet: 641px-1024px */
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Slightly larger than mobile but still compact */
+  .pro-header {
+    padding: 12px 16px !important;
+  }
+  
+  .floating-action-buttons {
+    bottom: 110px !important;
+    right: 16px !important;
+  }
+  
+  .map-legend {
+    bottom: 110px !important;
+    left: 16px !important;
+  }
+  
+  .notifications-panel {
+    width: 400px !important;
+    right: 16px !important;
+  }
+  
+  .coordinate-picker-panel,
+  .route-info-panel {
+    width: 340px !important;
+  }
+}
+
+/* Landscape mobile adjustments */
+@media (max-width: 896px) and (orientation: landscape) {
+  /* Reduce header height in landscape */
+  .pro-header {
+    padding: 6px 12px !important;
+  }
+  
+  .pro-header h1 {
+    font-size: 1.125rem !important;
+  }
+  
+  .pro-header p {
+    display: none !important; /* Hide subtitle in landscape */
+  }
+  
+  /* Move floating elements to avoid overlap */
+  .floating-action-buttons {
+    bottom: 80px !important;
+  }
+  
+  .map-legend {
+    bottom: 80px !important;
+    max-width: 160px !important;
+    padding: 10px !important;
+  }
+  
+  /* Compact bottom nav in landscape */
+  nav.bottom-nav {
+    padding: 8px !important;
+  }
+  
+  nav.bottom-nav span.text-xs {
+    display: none !important; /* Hide labels in landscape */
+  }
+}
+
+/* Very small devices (< 375px) */
+@media (max-width: 374px) {
+  .pro-header h1 {
+    font-size: 1.125rem !important;
+  }
+  
+  .pro-header img {
+    height: 28px !important;
+  }
+  
+  .floating-action-buttons button {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  
+  .map-legend {
+    max-width: 160px !important;
+    padding: 10px !important;
+  }
+  
+  nav.bottom-nav button {
+    padding: 6px 8px !important;
+    min-width: 50px !important;
+  }
+}

@@ -14,7 +14,9 @@
     "lint": "eslint src --ext .ts",
     "clean": "rm -rf dist",
     "create-users": "ts-node -r tsconfig-paths/register src/scripts/createTestUsers.ts",
-    "create-official": "ts-node -r tsconfig-paths/register src/scripts/createOfficialUser.ts"
+    "create-official": "ts-node -r tsconfig-paths/register src/scripts/createOfficialUser.ts",
+    "schema-update": "ts-node -r tsconfig-paths/register src/scripts/runSchemaUpdates.ts",
+    "check-tables": "ts-node -r tsconfig-paths/register src/scripts/checkTables.ts"
   },
   "dependencies": {
     "@winguard/shared": "*",

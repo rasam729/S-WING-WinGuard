@@ -460,3 +460,119 @@
 .badge-pulse {
   animation: badgePulse 1.5s ease-in-out infinite;
 }
+
+/* ============================================
+   MOBILE RESPONSIVE UTILITIES
+   ============================================ */
+
+/* Prevent text overflow on mobile */
+.mobile-text-wrap {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Mobile-friendly spacing */
+@media (max-width: 640px) {
+  .mobile-px-3 {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  
+  .mobile-py-2 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  .mobile-text-sm {
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+  }
+  
+  .mobile-text-xs {
+    font-size: 0.75rem !important;
+    line-height: 1rem !important;
+  }
+  
+  .mobile-hidden {
+    display: none !important;
+  }
+  
+  .mobile-full-width {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Stack flex items on mobile */
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+  
+  /* Reduce gap on mobile */
+  .mobile-gap-2 {
+    gap: 0.5rem !important;
+  }
+  
+  /* Smaller rounded corners on mobile */
+  .mobile-rounded {
+    border-radius: 0.5rem !important;
+  }
+  
+  /* Compact padding on mobile */
+  .mobile-compact {
+    padding: 0.75rem !important;
+  }
+}
+
+/* Touch-friendly interactive elements */
+@media (hover: none) and (pointer: coarse) {
+  /* Increase touch targets */
+  button, a, input[type="button"], input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Remove hover effects on touch devices */
+  .hover-lift:hover {
+    transform: none;
+  }
+  
+  /* Larger tap targets for icons */
+  .material-symbols-outlined {
+    padding: 4px;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Reduce vertical spacing in landscape */
+  .py-4, .py-6, .py-8 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  /* Compact headers in landscape */
+  header {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+}
+
+/* Safe area support for notched devices */
+@supports (padding: max(0px)) {
+  .safe-area-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  
+  .safe-area-left {
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+  
+  .safe-area-right {
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}

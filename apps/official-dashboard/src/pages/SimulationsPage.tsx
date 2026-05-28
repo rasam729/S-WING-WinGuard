@@ -46,6 +46,24 @@ interface SimulationStats {
   recommendation: string;
 }
 
+interface BudgetData {
+  issue_type: string;
+  estimated_cost: number;
+  ai_predicted_cost: number;
+  confidence_score: number;
+  savings: number;
+  recommendation: string;
+  cost_factors: any;
+}
+
+interface CrimeData {
+  crime_incidents_before: number;
+  crime_incidents_after: number;
+  predicted_reduction_percentage: number;
+  incidents_prevented: number;
+  recommendation: string;
+}
+
 export default function SimulationsPage() {
   const navigate = useNavigate();
   const { } = useSimulationStore();
@@ -55,6 +73,10 @@ export default function SimulationsPage() {
   const [simulationStats, setSimulationStats] = useState<SimulationStats | null>(null);
   const [currentSimulation, setCurrentSimulation] = useState<any>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [budgetData, setBudgetData] = useState<BudgetData | null>(null);
+  const [crimeData, setCrimeData] = useState<CrimeData | null>(null);
+  const [showBudgetCalc, setShowBudgetCalc] = useState(false);
+  const [showCrimeCalc, setShowCrimeCalc] = useState(false);
 
   // Map click handler
   const MapClickHandler = () => {
@@ -131,6 +153,48 @@ export default function SimulationsPage() {
       if (data.success) {
         setSimulationStats(data.data);
       }
+
+      // Calculate crime impact
+      const streetlights = infrastructure.filter(i => i.type === 'streetlight').length;
+      const policeBooths = infrastructure.filter(i => i.type === 'police_booth').length;
+      
+      if (streetlights > 0 || policeBooths > 0) {
+        const crimeResponse = await fetch(`http://localhost:3000/api/simulations/${currentSimulation.simulation_id}/calculate-crime-impact`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            latitude: BENGALURU_CENTER[0],
+            longitude: BENGALURU_CENTER[1],
+            radius_meters: 5000,
+            new_streetlights: streetlights,
+            new_police_booths: policeBooths
+          })
+        });
+        const crimeResult = await crimeResponse.json();
+        if (crimeResult.success) {
+          setCrimeData(crimeResult.data);
+        }
+      }
+
+      // Calculate budget for pothole fixes
+      const potholes = infrastructure.filter(i => i.type === 'pothole_fix');
+      if (potholes.length > 0) {
+        const budgetResponse = await fetch(`http://localhost:3000/api/simulations/${currentSimulation.simulation_id}/calculate-budget`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            issue_type: 'Pothole',
+            base_cost: 50000 * potholes.length,
+            latitude: BENGALURU_CENTER[0],
+            longitude: BENGALURU_CENTER[1],
+            road_type: 'MDR'
+          })
+        });
+        const budgetResult = await budgetResponse.json();
+        if (budgetResult.success) {
+          setBudgetData(budgetResult.data);
+        }
+      }
     } catch (error) {
       console.error('Error calculating impact:', error);
       alert('Failed to calculate impact');
@@ -168,6 +232,8 @@ export default function SimulationsPage() {
     setSimulationStats(null);
     setCurrentSimulation(null);
     setSelectedTool(null);
+    setBudgetData(null);
+    setCrimeData(null);
   };
 
   const removeInfrastructure = (id: string) => {
@@ -379,6 +445,132 @@ export default function SimulationsPage() {
                     <div className="pt-3 border-t border-gray-300">
                       <p className="text-xs text-gray-600 uppercase font-semibold mb-2">Recommendation</p>
                       <p className="text-sm text-gray-800">{simulationStats.recommendation}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Budget Analysis */}
+              {budgetData && (
+                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-5 shadow-sm border border-yellow-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold text-gray-900">AI Budget Analysis</h2>
+                    <button
+                      onClick={() => setShowBudgetCalc(!showBudgetCalc)}
+                      className="text-xs text-gray-600 hover:text-gray-900"
+                    >
+                      {showBudgetCalc ? 'Hide' : 'Show'} Details
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-gray-600 uppercase font-semibold">Estimated Cost</p>
+                      <p className="text-2xl font-bold text-gray-900">₹{budgetData.estimated_cost.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 uppercase font-semibold">AI Predicted Cost</p>
+                      <p className="text-2xl font-bold text-blue-600">₹{budgetData.ai_predicted_cost.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 uppercase font-semibold">Potential Savings</p>
+                      <p className="text-2xl font-bold text-green-600">₹{budgetData.savings.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 uppercase font-semibold">Confidence Score</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-green-500 h-2 rounded-full" 
+                            style={{ width: `${budgetData.confidence_score}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-bold">{budgetData.confidence_score.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                    {showBudgetCalc && budgetData.cost_factors && (
+                      <div className="pt-3 border-t border-gray-300">
+                        <p className="text-xs text-gray-600 uppercase font-semibold mb-2">Cost Factors</p>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span>Base Cost:</span>
+                            <span className="font-semibold">₹{budgetData.cost_factors.base_cost?.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Location Multiplier:</span>
+                            <span className="font-semibold">{budgetData.cost_factors.location_multiplier?.toFixed(2)}x</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Road Type Multiplier:</span>
+                            <span className="font-semibold">{budgetData.cost_factors.road_type_multiplier?.toFixed(2)}x</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Bulk Discount:</span>
+                            <span className="font-semibold">{budgetData.cost_factors.bulk_discount?.toFixed(2)}x</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Nearby Issues:</span>
+                            <span className="font-semibold">{budgetData.cost_factors.nearby_issues}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="pt-3 border-t border-gray-300">
+                      <p className="text-xs text-gray-600 uppercase font-semibold mb-2">Recommendation</p>
+                      <p className="text-sm text-gray-800">{budgetData.recommendation}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Crime Analytics */}
+              {crimeData && (
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 shadow-sm border border-purple-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold text-gray-900">Crime Analytics</h2>
+                    <button
+                      onClick={() => setShowCrimeCalc(!showCrimeCalc)}
+                      className="text-xs text-gray-600 hover:text-gray-900"
+                    >
+                      {showCrimeCalc ? 'Hide' : 'Show'} Details
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-gray-600 uppercase font-semibold">Crime Incidents</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-2xl font-bold text-red-600">{crimeData.crime_incidents_before}</span>
+                        <span className="text-gray-400">→</span>
+                        <span className="text-2xl font-bold text-green-600">{crimeData.crime_incidents_after}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 uppercase font-semibold">Predicted Reduction</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {crimeData.predicted_reduction_percentage.toFixed(1)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 uppercase font-semibold">Incidents Prevented</p>
+                      <p className="text-2xl font-bold text-purple-600">{crimeData.incidents_prevented}</p>
+                    </div>
+                    {showCrimeCalc && (
+                      <div className="pt-3 border-t border-gray-300">
+                        <p className="text-xs text-gray-600 uppercase font-semibold mb-2">Infrastructure Added</p>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span>Streetlights:</span>
+                            <span className="font-semibold">{crimeData.new_streetlights || 0} (15% reduction each)</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Police Booths:</span>
+                            <span className="font-semibold">{crimeData.new_police_booths || 0} (25% reduction each)</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="pt-3 border-t border-gray-300">
+                      <p className="text-xs text-gray-600 uppercase font-semibold mb-2">Impact Rating</p>
+                      <p className="text-sm text-gray-800">{crimeData.recommendation}</p>
                     </div>
                   </div>
                 </div>

@@ -85,6 +85,10 @@ import notificationsRoutes, { setNotificationSocketIO } from './routes/notificat
 import issuesRoutes from './routes/issues';
 import safetyScoreRoutes from './routes/safetyScoreRoutes';
 import budgetTrackingRoutes from './routes/budgetTrackingRoutes';
+import contractorsRoutes from './routes/contractorsRoutes';
+import budgetTransparencyRoutes from './routes/budgetTransparencyRoutes';
+import maintenanceRoutes from './routes/maintenanceRoutes';
+import engineersRoutes from './routes/engineersRoutes';
 
 app.use('/api', simulationRoutes);
 app.use('/api', analyticsRoutes);
@@ -92,6 +96,10 @@ app.use('/api', notificationsRoutes);
 app.use('/api/issues', issuesRoutes);
 app.use('/api', safetyScoreRoutes);
 app.use('/api', budgetTrackingRoutes);
+app.use('/api', contractorsRoutes);
+app.use('/api', budgetTransparencyRoutes);
+app.use('/api', maintenanceRoutes);
+app.use('/api', engineersRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

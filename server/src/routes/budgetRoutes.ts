@@ -249,4 +249,232 @@ router.patch('/budgets/:id/allocate', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/budget/issues
+ * Get all issues with budget tracking information
+ */
+router.get('/budget/issues', async (req: Request, res: Response) => {
+  try {
+    const query = `
+      SELECT 
+        r.report_id,
+        r.category,
+        r.severity,
+        r.description,
+        r.status,
+        r.city,
+        r.country,
+        r.road_type,
+        r.road_name,
+        r.last_relaying_date,
+        r.contractor_name,
+        r.estimated_cost,
+        r.amount_sanctioned,
+        r.amount_spent,
+        r.budget_variance,
+        r.created_at,
+        ST_X(r.location::geometry) as longitude,
+        ST_Y(r.location::geometry) as latitude,
+        ee.engineer_name,
+        ee.contact_email as engineer_email,
+        ee.contact_phone as engineer_phone
+      FROM reports r
+      LEFT JOIN executive_engineers ee ON r.assigned_engineer_id = ee.engineer_id
+      ORDER BY r.created_at DESC
+    `;
+    
+    const result = await pool.query(query);
+    
+    res.json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows
+    });
+  } catch (error: any) {
+    console.error('Error fetching budget issues:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch budget issues',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * PATCH /api/budget/issues/:id/sanction
+ * Sanction budget for a specific issue
+ */
+router.patch('/budget/issues/:id/sanction', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { amount_sanctioned } = req.body;
+    
+    if (!amount_sanctioned) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: amount_sanctioned'
+      });
+    }
+    
+    const query = `
+      UPDATE reports 
+      SET amount_sanctioned = $1,
+          status = CASE 
+            WHEN status = 'Report Received' THEN 'In Progress'
+            ELSE status
+          END
+      WHERE report_id = $2
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, [amount_sanctioned, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Issue not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Budget sanctioned successfully',
+      data: result.rows[0]
+    });
+  } catch (error: any) {
+    console.error('Error sanctioning budget:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sanction budget',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * PATCH /api/budget/issues/:id/spend
+ * Record spending for a specific issue
+ */
+router.patch('/budget/issues/:id/spend', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { amount_spent } = req.body;
+    
+    if (!amount_spent) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: amount_spent'
+      });
+    }
+    
+    const query = `
+      UPDATE reports 
+      SET amount_spent = $1,
+          budget_variance = amount_sanctioned - $1,
+          status = CASE 
+            WHEN $1 >= amount_sanctioned THEN 'Resolved'
+            ELSE status
+          END
+      WHERE report_id = $2
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, [amount_spent, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Issue not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Spending recorded successfully',
+      data: result.rows[0]
+    });
+  } catch (error: any) {
+    console.error('Error recording spending:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to record spending',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/budget/analytics
+ * Get budget analytics for dashboard
+ */
+router.get('/budget/analytics', async (req: Request, res: Response) => {
+  try {
+    const query = `
+      SELECT 
+        COUNT(*) as total_issues,
+        SUM(estimated_cost) as total_estimated,
+        SUM(amount_sanctioned) as total_sanctioned,
+        SUM(amount_spent) as total_spent,
+        SUM(budget_variance) as total_variance,
+        AVG(CASE WHEN amount_sanctioned > 0 
+          THEN (amount_spent / amount_sanctioned * 100) 
+          ELSE 0 END) as avg_utilization,
+        COUNT(CASE WHEN status = 'Report Received' THEN 1 END) as pending_count,
+        COUNT(CASE WHEN status = 'In Progress' THEN 1 END) as in_progress_count,
+        COUNT(CASE WHEN status = 'Resolved' THEN 1 END) as resolved_count,
+        SUM(CASE WHEN status = 'Report Received' THEN estimated_cost ELSE 0 END) as pending_cost,
+        SUM(CASE WHEN status = 'In Progress' THEN amount_sanctioned ELSE 0 END) as in_progress_cost,
+        SUM(CASE WHEN status = 'Resolved' THEN amount_spent ELSE 0 END) as resolved_cost
+      FROM reports
+    `;
+    
+    const categoryQuery = `
+      SELECT 
+        category,
+        COUNT(*) as count,
+        SUM(estimated_cost) as estimated,
+        SUM(amount_sanctioned) as sanctioned,
+        SUM(amount_spent) as spent
+      FROM reports
+      GROUP BY category
+      ORDER BY count DESC
+    `;
+    
+    const countryQuery = `
+      SELECT 
+        country,
+        COUNT(*) as count,
+        SUM(amount_sanctioned) as sanctioned,
+        SUM(amount_spent) as spent
+      FROM reports
+      WHERE country IS NOT NULL
+      GROUP BY country
+      ORDER BY count DESC
+      LIMIT 10
+    `;
+    
+    const [overallResult, categoryResult, countryResult] = await Promise.all([
+      pool.query(query),
+      pool.query(categoryQuery),
+      pool.query(countryQuery)
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        overall: overallResult.rows[0],
+        by_category: categoryResult.rows,
+        by_country: countryResult.rows
+      }
+    });
+  } catch (error: any) {
+    console.error('Error fetching budget analytics:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch budget analytics',
+      message: error.message
+    });
+  }
+});
+
 export default router;

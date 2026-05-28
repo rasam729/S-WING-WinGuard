@@ -7,6 +7,11 @@ import ReportsPage from './pages/ReportsPage';
 import IssuesPage from './pages/IssuesPage';
 import SimulationsPage from './pages/SimulationsPage';
 import SafetyScoreDashboardEnhanced from './components/SafetyScoreDashboardEnhanced';
+import AnalyticsPage from './pages/AnalyticsPage';
+import BudgetPage from './pages/BudgetPage';
+import ContractorsPage from './pages/ContractorsPage';
+import MaintenancePage from './pages/MaintenancePage';
+import EngineersPage from './pages/EngineersPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -27,6 +32,11 @@ function App() {
           <Route path="/issues" element={<IssuesPage />} />
           <Route path="/simulations" element={<SimulationsPage />} />
           <Route path="/safety-scores" element={<SafetyScoreDashboardEnhanced />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/contractors" element={<ContractorsPage />} />
+          <Route path="/maintenance" element={<MaintenancePage />} />
+          <Route path="/engineers" element={<EngineersPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

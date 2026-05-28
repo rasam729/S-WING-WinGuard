@@ -359,4 +359,214 @@ router.get('/simulations/:id/infrastructure', async (req: Request, res: Response
   }
 });
 
+/**
+ * POST /api/simulations/:id/calculate-budget
+ * Calculate AI-adjusted budget for simulation
+ */
+router.post('/simulations/:id/calculate-budget', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { issue_type, base_cost, latitude, longitude, road_type } = req.body;
+    
+    if (!issue_type || !base_cost || !latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: issue_type, base_cost, latitude, longitude'
+      });
+    }
+    
+    // Call AI budget calculation function
+    const query = `
+      SELECT * FROM calculate_ai_budget($1, $2, $3, $4, $5)
+    `;
+    
+    const result = await pool.query(query, [
+      issue_type,
+      base_cost,
+      latitude,
+      longitude,
+      road_type || 'MDR'
+    ]);
+    
+    const budgetData = result.rows[0];
+    
+    // Store budget simulation
+    await pool.query(`
+      INSERT INTO budget_simulations (
+        simulation_id, issue_type, estimated_cost, 
+        ai_predicted_cost, confidence_score, cost_factors
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+    `, [
+      id,
+      issue_type,
+      budgetData.estimated_cost,
+      budgetData.ai_predicted_cost,
+      budgetData.confidence_score,
+      budgetData.cost_factors
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        issue_type,
+        estimated_cost: parseFloat(budgetData.estimated_cost),
+        ai_predicted_cost: parseFloat(budgetData.ai_predicted_cost),
+        confidence_score: parseFloat(budgetData.confidence_score),
+        cost_factors: budgetData.cost_factors,
+        savings: parseFloat(budgetData.estimated_cost) - parseFloat(budgetData.ai_predicted_cost),
+        recommendation: budgetData.cost_factors.nearby_issues > 2 
+          ? 'Consider bulk work for cost savings'
+          : 'Individual repair recommended'
+      }
+    });
+  } catch (error: any) {
+    console.error('Error calculating budget:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to calculate budget',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/simulations/:id/calculate-crime-impact
+ * Calculate crime rate impact of infrastructure changes
+ */
+router.post('/simulations/:id/calculate-crime-impact', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { latitude, longitude, radius_meters, new_streetlights, new_police_booths } = req.body;
+    
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: latitude, longitude'
+      });
+    }
+    
+    // Call crime impact calculation function
+    const query = `
+      SELECT * FROM calculate_crime_impact($1, $2, $3, $4, $5)
+    `;
+    
+    const result = await pool.query(query, [
+      latitude,
+      longitude,
+      radius_meters || 1000,
+      new_streetlights || 0,
+      new_police_booths || 0
+    ]);
+    
+    const crimeData = result.rows[0];
+    
+    // Update simulation with crime data
+    await pool.query(`
+      UPDATE simulations
+      SET crime_incidents_before = $1,
+          crime_incidents_after = $2,
+          predicted_crime_reduction = $3
+      WHERE simulation_id = $4
+    `, [
+      crimeData.crime_incidents_before,
+      crimeData.crime_incidents_after,
+      crimeData.predicted_reduction,
+      id
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        crime_incidents_before: crimeData.crime_incidents_before,
+        crime_incidents_after: crimeData.crime_incidents_after,
+        predicted_reduction_percentage: parseFloat(crimeData.predicted_reduction),
+        incidents_prevented: crimeData.crime_incidents_before - crimeData.crime_incidents_after,
+        new_streetlights: new_streetlights || 0,
+        new_police_booths: new_police_booths || 0,
+        recommendation: crimeData.predicted_reduction > 30 
+          ? 'High impact: Strongly recommended for crime reduction'
+          : crimeData.predicted_reduction > 15
+          ? 'Moderate impact: Recommended for safety improvement'
+          : 'Low impact: Consider additional measures'
+      }
+    });
+  } catch (error: any) {
+    console.error('Error calculating crime impact:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to calculate crime impact',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/simulations/:id/issues
+ * Get all issues in simulation area for mapping
+ */
+router.get('/simulations/:id/issues', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Get simulation details
+    const simResult = await pool.query(
+      'SELECT * FROM simulations WHERE simulation_id = $1',
+      [id]
+    );
+    
+    if (simResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Simulation not found'
+      });
+    }
+    
+    const simulation = simResult.rows[0];
+    
+    // Get all issues within radius
+    const query = `
+      SELECT 
+        report_id,
+        category,
+        severity,
+        description,
+        status,
+        ST_X(location::geometry) as longitude,
+        ST_Y(location::geometry) as latitude,
+        road_type,
+        road_name,
+        estimated_cost,
+        amount_sanctioned,
+        amount_spent,
+        created_at
+      FROM reports
+      WHERE ST_DWithin(
+        location,
+        ST_GeogFromText('POINT(' || $2 || ' ' || $1 || ')'),
+        $3
+      )
+      ORDER BY severity DESC, created_at DESC
+    `;
+    
+    const result = await pool.query(query, [
+      simulation.center_lat,
+      simulation.center_lng,
+      simulation.radius_meters
+    ]);
+    
+    res.json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows
+    });
+  } catch (error: any) {
+    console.error('Error fetching simulation issues:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch simulation issues',
+      message: error.message
+    });
+  }
+});
+
 export default router;
