@@ -184,9 +184,9 @@ export default function DashboardPage() {
     }
   };
 
-  // Default center (India center for country-wide view)
-  const mapCenter: [number, number] = [20.5937, 78.9629]; // Center of India
-  const mapZoom = 5; // Zoom level to show all of India
+  // Default center (world view)
+  const mapCenter: [number, number] = [20, 0]; // World center
+  const mapZoom = 2; // Zoomed out for global view
 
   const handleLogout = () => {
     logout();
@@ -207,7 +207,7 @@ export default function DashboardPage() {
         message = `Good news! We're working on fixing the ${issue?.type.replace('_', ' ')} issue you reported. Our team is on it!`;
         type = 'info';
       } else if (newStatus === 'resolved') {
-        message = `Great news! The ${issue?.type.replace('_', ' ')} issue you reported has been resolved. Thank you for helping make Bengaluru safer!`;
+        message = `Great news! The ${issue?.type.replace('_', ' ')} issue you reported has been resolved. Thank you for helping make your city safer!`;
         type = 'success';
       }
       
@@ -291,25 +291,10 @@ export default function DashboardPage() {
     
     setIsSearching(true);
     try {
-      // Try multiple search strategies for better results
-      const searches = [
-        // Primary search with India filter
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=in&limit=5&addressdetails=1`),
-        // Backup search without country filter for better coverage
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery + ', India')}&limit=3&addressdetails=1`)
-      ];
-      
-      const responses = await Promise.all(searches);
-      const results1 = await responses[0].json();
-      const results2 = await responses[1].json();
-      
-      // Combine and deduplicate results
-      const allResults = [...results1, ...results2];
-      const uniqueResults = allResults.filter((result, index, self) =>
-        index === self.findIndex((r) => r.place_id === result.place_id)
-      );
-      
-      setSearchResults(uniqueResults.slice(0, 8)); // Show top 8 results
+      // Global Nominatim search (no India-only filtering)
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=8&addressdetails=1`);
+      const data = await response.json();
+      setSearchResults(data.slice(0, 8));
     } catch (error) {
       console.error('Search error:', error);
       // Fallback to basic search

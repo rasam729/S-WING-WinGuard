@@ -16,14 +16,13 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement,
 // ── World city centres ───────────────────────────────────────────────────────
 const WORLD_CENTERS: Record<string, { center: [number, number]; zoom: number; label: string }> = {
   global:    { center: [20, 0],              zoom: 2,  label: '🌍 World View' },
-  india:     { center: [12.9716, 77.5946],   zoom: 11, label: '🇮🇳 Bengaluru, India' },
+  india:     { center: [12.9716, 77.5946],   zoom: 11, label: '🇮🇳 India' },
   usa:       { center: [40.7128, -74.0060],  zoom: 11, label: '🇺🇸 New York, USA' },
   uk:        { center: [51.5074, -0.1278],   zoom: 11, label: '🇬🇧 London, UK' },
   germany:   { center: [52.5200, 13.4050],   zoom: 11, label: '🇩🇪 Berlin, Germany' },
   australia: { center: [-33.8688, 151.2093], zoom: 11, label: '🇦🇺 Sydney, Australia' },
   japan:     { center: [35.6762, 139.6503],  zoom: 11, label: '🇯🇵 Tokyo, Japan' },
 };
-const DEFAULT_ZOOM = 11;
 
 // ── Marker Icons ─────────────────────────────────────────────────────────────
 const makeIcon = (emoji: string, bg: string) => L.divIcon({

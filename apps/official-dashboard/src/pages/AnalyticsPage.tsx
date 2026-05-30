@@ -394,8 +394,7 @@ export default function AnalyticsPage() {
     { id: 'overview', label: '📊 Overview', icon: '📊' },
     { id: 'issues', label: '⚠️ Issues', icon: '⚠️' },
     { id: 'crime', label: '🔒 Crime Rate', icon: '🔒' },
-    { id: 'budget', label: '💰 Budget', icon: '💰' },
-    { id: 'safety', label: '🛡️ Safety Score', icon: '🛡️' }
+    { id: 'budget', label: '💰 Budget', icon: '💰' }
   ];
 
   if (loading) {
@@ -793,85 +792,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* ── SAFETY SCORE ── */}
-        {activeSection === 'safety' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-                <h3 className="text-lg font-bold text-white mb-4">🛡️ Road Safety Score Trend</h3>
-                <Line data={safetyScoreData} options={chartDefaults as any} />
-              </div>
-              <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-                <h3 className="text-lg font-bold text-white mb-4">🗺️ Safety Score by Ward</h3>
-                <Bar data={{
-                  labels: ['Koramangala', 'Whitefield', 'Jayanagar', 'Indiranagar', 'Bannerghatta', 'HSR Layout', 'BTM Layout'],
-                  datasets: [{
-                    label: 'Safety Score /100',
-                    data: [72, 58, 81, 65, 77, 70, 63],
-                    backgroundColor: [
-                      'rgba(34,197,94,0.8)', 'rgba(239,68,68,0.8)', 'rgba(34,197,94,0.8)',
-                      'rgba(245,158,11,0.8)', 'rgba(34,197,94,0.8)', 'rgba(245,158,11,0.8)', 'rgba(239,68,68,0.8)'
-                    ],
-                    borderRadius: 8
-                  }]
-                }} options={chartDefaults as any} />
-              </div>
-            </div>
-
-            {/* Safety score cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { ward: 'Jayanagar', score: 81, trend: '+4', good: true },
-                { ward: 'Bannerghatta', score: 77, trend: '+2', good: true },
-                { ward: 'Koramangala', score: 72, trend: '+1', good: true },
-                { ward: 'HSR Layout', score: 70, trend: '+3', good: true },
-                { ward: 'Indiranagar', score: 65, trend: '-1', good: false },
-                { ward: 'BTM Layout', score: 63, trend: '+2', good: true },
-                { ward: 'Whitefield', score: 58, trend: '-3', good: false },
-                { ward: 'Marathahalli', score: 55, trend: '-2', good: false }
-              ].map(w => (
-                <div key={w.ward} className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-                  <p className="text-gray-400 text-xs font-semibold mb-2">{w.ward}</p>
-                  <div className="flex items-end justify-between">
-                    <p className={`text-2xl font-bold ${w.score >= 70 ? 'text-green-400' : w.score >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
-                      {w.score}
-                    </p>
-                    <span className={`text-sm font-bold ${w.good ? 'text-green-400' : 'text-red-400'}`}>
-                      {w.trend}
-                    </span>
-                  </div>
-                  <div className="mt-2 bg-gray-800 rounded-full h-1.5">
-                    <div
-                      className={`h-1.5 rounded-full ${w.score >= 70 ? 'bg-green-500' : w.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                      style={{ width: `${w.score}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-              <h3 className="text-lg font-bold text-white mb-4">📊 Safety Score Factors Breakdown</h3>
-              <Bar data={{
-                labels: ['Infrastructure Quality', 'Lighting Coverage', 'Police Presence', 'Road Condition', 'Drainage', 'Signage'],
-                datasets: [
-                  {
-                    label: 'Current Score',
-                    data: [68, 72, 55, 61, 48, 74],
-                    backgroundColor: 'rgba(59,130,246,0.7)',
-                    borderRadius: 6
-                  },
-                  {
-                    label: 'Target Score',
-                    data: [85, 90, 80, 85, 75, 90],
-                    backgroundColor: 'rgba(245,158,11,0.4)',
-                    borderRadius: 6
-                  }
-                ]
-              }} options={chartDefaults as any} />
-            </div>
-          </div>
-        )}
+        {/* Safety Score section removed (globalized build) */}
 
       </main>
     </div>
