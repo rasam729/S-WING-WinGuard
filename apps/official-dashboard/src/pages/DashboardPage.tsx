@@ -5,6 +5,7 @@ import L from 'leaflet';
 import { useAuthStore } from '../store/authStore';
 import { useIssuesStore, Issue } from '../store/issuesStore';
 import 'leaflet/dist/leaflet.css';
+import io from 'socket.io-client';
 
 // Custom marker icons with glowing effect
 const createGlowingIcon = (icon: string, status: 'critical' | 'in_progress' | 'resolved') => {
@@ -75,7 +76,7 @@ export default function DashboardPage() {
   
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [simulationMode, setSimulationMode] = useState<'install' | null>(null);
-  const [installType, setInstallType] = useState<'streetlight' | 'police_booth' | null>(null);
+  const [installType, setInstallType] = useState<'streetlight' | 'police_booth' | 'hospital' | null>(null);
   const [clickedLocation, setClickedLocation] = useState<[number, number] | null>(null);
   const [citizenReports, setCitizenReports] = useState<CitizenReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
@@ -90,12 +91,166 @@ export default function DashboardPage() {
   const [pickedPlaceName, setPickedPlaceName] = useState<string>('');
   const mapRef = useRef<any>(null);
 
+  // Real-time alerts and Notification Drawer state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotificationDrawer, setShowNotificationDrawer] = useState(false);
+  const [toastAlert, setToastAlert] = useState<{
+    show: boolean;
+    reportId: number;
+    category: string;
+    description: string;
+    severity: number;
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications');
+      const data = await response.json();
+      if (data.success) {
+        setNotifications(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const markNotificationAsRead = async (notificationId: number) => {
+    try {
+      await fetch(`/api/notifications/${notificationId}/read`, {
+        method: 'PUT'
+      });
+      setNotifications(prev => prev.map(n => 
+        n.notification_id === notificationId ? { ...n, read_at: new Date().toISOString() } : n
+      ));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      const unread = notifications.filter(n => !n.read_at);
+      await Promise.all(unread.map(n => 
+        fetch(`/api/notifications/${n.notification_id}/read`, {
+          method: 'PUT'
+        })
+      ));
+      setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
+  const deleteNotification = async (notificationId: number) => {
+    try {
+      await fetch(`/api/notifications/${notificationId}`, {
+        method: 'DELETE'
+      });
+      setNotifications(prev => prev.filter(n => n.notification_id !== notificationId));
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
+  };
+
+  const flyToReportLocation = (lat: number, lng: number) => {
+    if (mapRef.current) {
+      mapRef.current.flyTo([lat, lng], 16, {
+        duration: 2.5,
+        easeLinearity: 0.25
+      });
+    }
+  };
+
   // Fetch citizen reports from API and convert to issues
   useEffect(() => {
     fetchCitizenReports();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchCitizenReports, 30000);
-    return () => clearInterval(interval);
+    fetchNotifications();
+    
+    // Connect to socket for live updates
+    const socket = io('http://localhost:3000');
+    
+    socket.on('connect', () => {
+      console.log('🔌 Official dashboard connected to socket server');
+      
+      const token = useAuthStore.getState().token;
+      if (token) {
+        socket.emit('authenticate', { token });
+      }
+    });
+
+    socket.on('authenticated', () => {
+      console.log('✅ Official WebSocket authenticated successfully');
+      socket.emit('subscribe_updates', { role: 'official' });
+    });
+
+    socket.on('new-report', (data: any) => {
+      console.log('🚨 Real-time report received:', data);
+      
+      // Play a beautiful, synthesized premium 2-tone notification chime using Web Audio API!
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const playTone = (freq: number, startTime: number, duration: number) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, startTime);
+          
+          gain.gain.setValueAtTime(0.15, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration - 0.05);
+          
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        };
+        
+        const now = audioCtx.currentTime;
+        playTone(587.33, now, 0.35); // D5
+        playTone(880.00, now + 0.15, 0.55); // A5
+      } catch (audioErr) {
+        console.warn('AudioContext failed to start:', audioErr);
+      }
+
+      // Show the Toast notification
+      setToastAlert({
+        show: true,
+        reportId: data.report_id,
+        category: data.category,
+        description: data.description,
+        severity: data.severity,
+        latitude: data.latitude,
+        longitude: data.longitude
+      });
+
+      // Automatically clear toast after 8 seconds
+      setTimeout(() => {
+        setToastAlert(prev => prev?.reportId === data.report_id ? null : prev);
+      }, 8000);
+
+      // Refresh maps and count immediately
+      fetchCitizenReports();
+      fetchNotifications();
+    });
+
+    socket.on('new-notification', (data: any) => {
+      console.log('🔔 Real-time notification received:', data);
+      fetchNotifications();
+    });
+
+    // Refresh every 30 seconds as fallback
+    const interval = setInterval(() => {
+      fetchCitizenReports();
+      fetchNotifications();
+    }, 30000);
+
+    return () => {
+      socket.disconnect();
+      clearInterval(interval);
+    };
   }, []);
 
   const fetchCitizenReports = async () => {
@@ -195,76 +350,93 @@ export default function DashboardPage() {
 
   const handleStatusChange = async (issueId: number, newStatus: 'in_progress' | 'resolved') => {
     const issue = issues.find(i => i.id === issueId);
+    void issue;
     
     updateIssueStatus(issueId, newStatus);
 
-    // Send notification to citizen app
+    // Update status in database via API
     try {
-      let message = '';
-      let type: 'info' | 'success' = 'info';
+      const statusText = newStatus === 'resolved' ? 'Resolved' : 'In Progress';
       
-      if (newStatus === 'in_progress') {
-        message = `Good news! We're working on fixing the ${issue?.type.replace('_', ' ')} issue you reported. Our team is on it!`;
-        type = 'info';
-      } else if (newStatus === 'resolved') {
-        message = `Great news! The ${issue?.type.replace('_', ' ')} issue you reported has been resolved. Thank you for helping make Bengaluru safer!`;
-        type = 'success';
-      }
+      // Determine the actual report ID (citizen reports have ID > 10000)
+      const reportId = issueId > 10000 ? issueId - 10000 : issueId;
       
-      await fetch('/api/notifications', {
-        method: 'POST',
+      const response = await fetch(`http://localhost:3000/api/reports/${reportId}/status`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: 1, // In production, this would be the actual user who reported it
-          report_id: issueId > 10000 ? issueId - 10000 : null, // Link to original report if it's a citizen report
-          message: message,
-          type: type
+          status: statusText
         })
       });
-      
-      // Also update the report status in the database if it's a citizen report
-      if (issueId > 10000) {
-        const reportId = issueId - 10000;
-        await fetch(`/api/reports/${reportId}/status`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            status: newStatus === 'resolved' ? 'Resolved' : 'In Progress'
-          })
-        });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Show success message
+        if (newStatus === 'resolved') {
+          alert(`✅ Issue marked as resolved! The citizen has been notified and the issue will be removed from their map.`);
+        } else {
+          alert(`✅ Issue status updated to "In Progress". The citizen has been notified.`);
+        }
+      } else {
+        alert('❌ Failed to update status. Please try again.');
       }
     } catch (error) {
-      console.error('Error sending notification:', error);
+      console.error('Error updating status:', error);
+      alert('❌ Error updating status. Please try again.');
     }
   };
 
   const confirmInstallation = async () => {
     if (clickedLocation && installType) {
-      const newIssue: Issue = {
-        id: Date.now(),
-        type: installType,
-        latitude: clickedLocation[0],
-        longitude: clickedLocation[1],
-        status: 'resolved',
-        description: `New ${installType === 'streetlight' ? 'streetlight' : 'police booth'} installed`,
-        reportedAt: 'Just now',
-        severity: 0
-      };
-      addIssue(newIssue);
-      
-      // Send notification
       try {
-        await fetch('/api/notifications', {
+        // Save infrastructure to database
+        const response = await fetch('http://localhost:3000/api/infrastructure', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            user_id: 1,
-            message: `New ${installType === 'streetlight' ? 'streetlight' : 'police booth'} installed in your area`,
-            type: 'success'
+            type: installType,
+            latitude: clickedLocation[0],
+            longitude: clickedLocation[1],
+            status: 'functional',
+            notes: `Installed by official on ${new Date().toLocaleDateString()}`
           })
         });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Add to local state for immediate display
+          const newIssue: Issue = {
+            id: Date.now(),
+            type: installType,
+            latitude: clickedLocation[0],
+            longitude: clickedLocation[1],
+            status: 'resolved',
+            description: `New ${installType === 'streetlight' ? 'streetlight' : installType === 'police_booth' ? 'police booth' : 'hospital'} installed`,
+            reportedAt: 'Just now',
+            severity: 0
+          };
+          addIssue(newIssue);
+          
+          // Send notification to citizens
+          await fetch('http://localhost:3000/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: 1,
+              message: `New ${installType === 'streetlight' ? 'streetlight' : installType === 'police_booth' ? 'police booth' : 'hospital'} installed in your area`,
+              type: 'success'
+            })
+          });
+
+          alert(`✅ ${installType === 'streetlight' ? 'Streetlight' : installType === 'police_booth' ? 'Police Booth' : 'Hospital'} installed successfully!`);
+        } else {
+          alert('❌ Failed to install infrastructure. Please try again.');
+        }
       } catch (error) {
-        console.error('Error sending notification:', error);
+        console.error('Error installing infrastructure:', error);
+        alert('❌ Error installing infrastructure. Please try again.');
       }
       
       setSimulationMode(null);
@@ -273,7 +445,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleInstallNew = (type: 'streetlight' | 'police_booth') => {
+  const handleInstallNew = (type: 'streetlight' | 'police_booth' | 'hospital') => {
     setSimulationMode('install');
     setInstallType(type);
     setClickedLocation(null);
@@ -341,6 +513,26 @@ export default function DashboardPage() {
     
     setSearchResults([]);
     setSearchQuery('');
+  };
+
+  // Global search handler - search anywhere in the world
+  const handleGlobalSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    try {
+      // Search globally without country restrictions
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=10&addressdetails=1`
+      );
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (error) {
+      console.error('Global search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // Reverse geocode to get place name from coordinates
@@ -477,15 +669,6 @@ export default function DashboardPage() {
             <span className="text-sm font-medium">Simulations</span>
           </button>
           <button 
-            onClick={() => navigate('/safety-scores')}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-            <span className="text-sm font-medium">Safety Scores</span>
-          </button>
-          <button 
             onClick={() => navigate('/analytics')}
             className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
           >
@@ -569,10 +752,116 @@ export default function DashboardPage() {
                   <span className="text-xs font-bold text-teal-700">Live System Monitoring</span>
                 </div>
                 <div className="relative">
-                  <svg className="w-6 h-6 text-gray-600 cursor-pointer hover:text-teal-600 transition-colors" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
-                  </svg>
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-orange-600 rounded-full"></span>
+                  <button 
+                    onClick={() => setShowNotificationDrawer(!showNotificationDrawer)}
+                    className="relative focus:outline-none focus:ring-2 focus:ring-teal-500 rounded-full p-1.5 transition-colors hover:bg-gray-100 flex items-center justify-center"
+                    aria-label="System Notifications"
+                  >
+                    <svg className="w-6 h-6 text-gray-600 cursor-pointer hover:text-teal-600 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+                    </svg>
+                    {notifications.filter(n => !n.read_at).length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[10px] font-black rounded-full h-5 w-5 flex items-center justify-center border-2 border-white animate-pulse">
+                        {notifications.filter(n => !n.read_at).length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {showNotificationDrawer && (
+                    <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                      <div className="bg-gradient-to-r from-teal-600 to-cyan-600 p-4 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-lg">notifications_active</span>
+                          <span className="font-bold text-sm">Live System Alerts</span>
+                        </div>
+                        {notifications.filter(n => !n.read_at).length > 0 && (
+                          <button 
+                            onClick={markAllNotificationsAsRead}
+                            className="text-xs font-semibold hover:underline bg-white/20 px-2.5 py-1 rounded-md transition-colors"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-80 overflow-y-auto divide-y divide-gray-100">
+                        {notifications.length === 0 ? (
+                          <div className="p-8 text-center text-gray-500">
+                            <span className="material-symbols-outlined text-3xl mb-2 text-teal-500" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            <p className="text-sm font-semibold">All systems green</p>
+                            <p className="text-xs text-gray-400 mt-1">No new safety reports.</p>
+                          </div>
+                        ) : (
+                          notifications.map((notif) => (
+                            <div 
+                              key={notif.notification_id} 
+                              className={`p-4 flex gap-3 transition-colors hover:bg-teal-50/20 ${!notif.read_at ? 'bg-teal-50/5 font-medium' : ''}`}
+                            >
+                              <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-xs ${
+                                notif.type === 'success' ? 'bg-green-500' :
+                                notif.type === 'warning' ? 'bg-orange-500' :
+                                notif.type === 'danger' ? 'bg-red-500' : 'bg-blue-500'
+                              }`}>
+                                {notif.type === 'success' ? '✓' :
+                                 notif.type === 'warning' ? '!' :
+                                 notif.type === 'danger' ? '☠' : 'i'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-gray-700 leading-relaxed break-words">{notif.message}</p>
+                                <div className="flex items-center justify-between mt-2.5">
+                                  <span className="text-[10px] text-gray-400 font-bold">
+                                    {new Date(notif.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    {notif.report_id && (
+                                      <button
+                                        onClick={() => {
+                                          const issueId = notif.report_id + 10000;
+                                          const issue = issues.find(i => i.id === issueId);
+                                          if (issue) {
+                                            flyToReportLocation(issue.latitude, issue.longitude);
+                                          } else {
+                                            // Fallback if issues store doesn't have it yet, try refreshing first
+                                            fetchCitizenReports().then(() => {
+                                              const updatedIssue = useIssuesStore.getState().issues.find(i => i.id === issueId);
+                                              if (updatedIssue) {
+                                                flyToReportLocation(updatedIssue.latitude, updatedIssue.longitude);
+                                              }
+                                            });
+                                          }
+                                          markNotificationAsRead(notif.notification_id);
+                                          setShowNotificationDrawer(false);
+                                        }}
+                                        className="text-[10px] font-bold text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 px-2 py-0.5 rounded-full transition-colors"
+                                      >
+                                        Locate
+                                      </button>
+                                    )}
+                                    {!notif.read_at && (
+                                      <button 
+                                        onClick={() => markNotificationAsRead(notif.notification_id)}
+                                        className="text-[10px] font-bold text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded-full transition-colors"
+                                      >
+                                        Read
+                                      </button>
+                                    )}
+                                    <button 
+                                      onClick={() => deleteNotification(notif.notification_id)}
+                                      className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                      aria-label="Delete notification"
+                                    >
+                                      🗑️
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -626,8 +915,7 @@ export default function DashboardPage() {
             <div className="p-5 border-b border-gray-200">
               <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">Digital Twin Command Center - India</h3>
-                  <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mt-1">Real-time Nationwide Monitoring & Simulation</p>
+                  <h3 className="text-xl font-semibold text-gray-900">Digital Twin Command Center</h3>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {/* Installation Mode Buttons */}
@@ -656,6 +944,19 @@ export default function DashboardPage() {
                       <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
                     </svg>
                     Install Police Booth
+                  </button>
+                  <button 
+                    onClick={() => handleInstallNew('hospital')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
+                      simulationMode === 'install' && installType === 'hospital'
+                        ? 'bg-pink-600 text-white border-pink-600 shadow-lg'
+                        : 'bg-white text-pink-700 border-pink-300 hover:border-pink-600'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/>
+                    </svg>
+                    Install Hospital
                   </button>
                   <button 
                     onClick={toggleCoordinatePicker}
@@ -687,6 +988,48 @@ export default function DashboardPage() {
                     </button>
                   )}
                 </div>
+              </div>
+
+              {/* Global Search Bar */}
+              <div className="relative mb-4">
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                  </svg>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleGlobalSearch()}
+                    placeholder="Search for any place in the world (e.g., Mumbai, Delhi, Connaught Place)"
+                    className="w-full pl-10 pr-24 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
+                  />
+                  <button
+                    onClick={handleGlobalSearch}
+                    disabled={isSearching || !searchQuery.trim()}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-1.5 bg-blue-600 text-white rounded-md text-sm font-bold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSearching ? 'Searching...' : 'Search'}
+                  </button>
+                </div>
+                
+                {/* Search Results Dropdown */}
+                {searchResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+                    {searchResults.map((result, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSelectSearchResult(result)}
+                        className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition"
+                      >
+                        <p className="font-semibold text-gray-900 text-sm">{result.display_name}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          📍 Lat: {parseFloat(result.lat).toFixed(4)}, Lng: {parseFloat(result.lon).toFixed(4)}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               
               {/* Search Bar */}
@@ -1050,6 +1393,51 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Premium Toast Alert for real-time new reports */}
+      {toastAlert && toastAlert.show && (
+        <div className="fixed bottom-24 right-6 w-96 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-red-500/30 z-[9999] overflow-hidden animate-bounce-short">
+          <div className="bg-gradient-to-r from-red-600 to-orange-600 px-4 py-3 text-white flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="animate-ping absolute w-2.5 h-2.5 rounded-full bg-white opacity-75"></span>
+              <span className="relative w-2.5 h-2.5 rounded-full bg-white"></span>
+              <span className="font-extrabold text-xs tracking-wider uppercase ml-1.5">New Safety Issue Reported!</span>
+            </div>
+            <button 
+              onClick={() => setToastAlert(null)}
+              className="text-white hover:text-red-100 font-bold text-lg leading-none"
+            >
+              ×
+            </button>
+          </div>
+          <div className="p-4">
+            <h4 className="text-base font-black text-gray-950 font-display flex items-center justify-between">
+              <span>{toastAlert.category}</span>
+              <span className="px-2.5 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-black">
+                Severity {toastAlert.severity}
+              </span>
+            </h4>
+            <p className="text-xs text-gray-600 font-medium mt-1.5 leading-relaxed break-words">{toastAlert.description}</p>
+            <div className="flex items-center gap-2 mt-4">
+              <button
+                onClick={() => {
+                  flyToReportLocation(toastAlert.latitude, toastAlert.longitude);
+                  setToastAlert(null);
+                }}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-bold text-xs hover:shadow-lg transition-all flex items-center justify-center gap-1.5"
+              >
+                📍 Locate on Map
+              </button>
+              <button
+                onClick={() => setToastAlert(null)}
+                className="px-3.5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-xs transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

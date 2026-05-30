@@ -7,7 +7,7 @@ import StatsPage from './pages/StatsPage';
 import ReportsPage from './pages/ReportsPage';
 import IssuesPage from './pages/IssuesPage';
 import SimulationsPage from './pages/SimulationsPage';
-import SafetyScoreDashboardEnhanced from './components/SafetyScoreDashboardEnhanced';
+// import SafetyScoreDashboardEnhanced from './components/SafetyScoreDashboardEnhanced';
 import AnalyticsPage from './pages/AnalyticsPage';
 import BudgetPage from './pages/BudgetPage';
 import ContractorsPage from './pages/ContractorsPage';
@@ -33,7 +33,6 @@ function App() {
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/issues" element={<IssuesPage />} />
           <Route path="/simulations" element={<SimulationsPage />} />
-          <Route path="/safety-scores" element={<SafetyScoreDashboardEnhanced />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/budget" element={<BudgetPage />} />
           <Route path="/contractors" element={<ContractorsPage />} />
@@ -42,7 +41,7 @@ function App() {
           <Route path="/road-info" element={<RoadInfoPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
       </Routes>
       <ViosaChatbot />
     </Router>

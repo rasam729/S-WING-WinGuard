@@ -89,6 +89,7 @@ import contractorsRoutes from './routes/contractorsRoutes';
 import budgetTransparencyRoutes from './routes/budgetTransparencyRoutes';
 import maintenanceRoutes from './routes/maintenanceRoutes';
 import engineersRoutes from './routes/engineersRoutes';
+import infrastructureRoutes from './routes/infrastructureRoutes';
 
 app.use('/api', simulationRoutes);
 app.use('/api', analyticsRoutes);
@@ -100,6 +101,7 @@ app.use('/api', contractorsRoutes);
 app.use('/api', budgetTransparencyRoutes);
 app.use('/api', maintenanceRoutes);
 app.use('/api', engineersRoutes);
+app.use('/api/infrastructure', infrastructureRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -112,6 +114,12 @@ app.use(errorHandler);
 initializeSocketIO(io);
 setSocketIO(io); // Pass Socket.IO instance to reports routes for real-time updates
 setNotificationSocketIO(io); // Pass Socket.IO instance to notifications routes
+
+// Import and set Socket.IO for reportsPostgres and infrastructure
+import { setReportsSocketIO } from './routes/reportsPostgres';
+import { setInfrastructureSocketIO } from './routes/infrastructureRoutes';
+setReportsSocketIO(io);
+setInfrastructureSocketIO(io);
 
 // Start Server
 const PORT = process.env.PORT || 3000;

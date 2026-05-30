@@ -22,8 +22,13 @@ const WORLD_CENTERS: Record<string, { center: [number, number]; zoom: number; la
   germany:   { center: [52.5200, 13.4050],   zoom: 11, label: '🇩🇪 Berlin, Germany' },
   australia: { center: [-33.8688, 151.2093], zoom: 11, label: '🇦🇺 Sydney, Australia' },
   japan:     { center: [35.6762, 139.6503],  zoom: 11, label: '🇯🇵 Tokyo, Japan' },
+  canada:    { center: [43.6532, -79.3832],  zoom: 11, label: '🇨🇦 Toronto, Canada' },
+  france:    { center: [48.8566, 2.3522],    zoom: 11, label: '🇫🇷 Paris, France' },
+  brazil:    { center: [-23.5505, -46.6333], zoom: 11, label: '🇧🇷 São Paulo, Brazil' },
+  china:     { center: [39.9042, 116.4074],  zoom: 11, label: '🇨🇳 Beijing, China' },
+  uae:       { center: [25.2048, 55.2708],   zoom: 11, label: '🇦🇪 Dubai, UAE' },
 };
-const DEFAULT_ZOOM = 11;
+// const DEFAULT_ZOOM = 11;
 
 // ── Marker Icons ─────────────────────────────────────────────────────────────
 const makeIcon = (emoji: string, bg: string) => L.divIcon({
@@ -149,7 +154,10 @@ export default function SimulationsPage() {
   const [showResults, setShowResults]         = useState(false);
   const [activeResultTab, setActiveResultTab] = useState<'summary' | 'cost' | 'crime' | 'safety'>('summary');
   const [linkedIssues, setLinkedIssues]       = useState<any[]>([]);
-  const [selectedCity, setSelectedCity]       = useState('india');
+  const [selectedCity, setSelectedCity]       = useState('global');
+  // const [searchQuery, setSearchQuery]         = useState('');
+  // const [searchResults, setSearchResults]     = useState<any[]>([]);
+  // const [isSearching, setIsSearching]         = useState(false);
   const mapData = WORLD_CENTERS[selectedCity];
 
   // Fetch map issues on mount for linking
@@ -394,11 +402,11 @@ export default function SimulationsPage() {
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
           {[
             { path: '/',            label: 'Dashboard',   emoji: '🏠', active: false },
-            { path: '/simulations', label: 'Simulations', emoji: '🗺️', active: true  },
-            { path: '/issues',      label: 'Issues',      emoji: '⚠️', active: false },
+            { path: '/statistics',  label: 'Statistics',  emoji: '📊', active: false },
             { path: '/reports',     label: 'Reports',     emoji: '📋', active: false },
-            { path: '/budget',      label: 'Budget',      emoji: '💰', active: false },
-            { path: '/analytics',   label: 'Analytics',   emoji: '📊', active: false }
+            { path: '/issues',      label: 'Issues',      emoji: '⚠️', active: false },
+            { path: '/simulations', label: 'Simulations', emoji: '🗺️', active: true  },
+            { path: '/analytics',   label: 'Analytics',   emoji: '📈', active: false }
           ].map(item => (
             <button
               key={item.path}
@@ -434,8 +442,7 @@ export default function SimulationsPage() {
         {/* ── Top Bar ── */}
         <header className="fixed top-0 right-0 left-0 md:left-[260px] bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm z-40 h-16 flex items-center justify-between px-6">
           <div>
-            <h1 className="text-lg font-bold text-gray-900">🗺️ Global Infrastructure Digital Twin</h1>
-            <p className="text-xs text-gray-500">Simulate &amp; deploy safety infrastructure worldwide</p>
+            <h1 className="text-lg font-bold text-gray-900">Digital Twin Command Center</h1>
           </div>
           <div className="flex gap-2 items-center">
             <select
