@@ -64,10 +64,6 @@ interface BudgetCategory {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const fmt = (v: number, unit: 'L' | 'Cr' = 'L') =>
-  unit === 'Cr'
-    ? `₹${(v / 10000000).toFixed(2)} Cr`
-    : `₹${(v / 100000).toFixed(2)} L`;
 
 const getMonthLabels = (n: number) => {
   const labels: string[] = [];
@@ -197,8 +193,20 @@ export default function BudgetPage() {
   const [displayCurrency, setDisplayCurrency] = useState('INR');
 
   // Currency helpers — base is INR
-  const cvtCur = (amt: number) => convertCurrency(amt, 'INR', displayCurrency);
-  const fmtCur = (amt: number) => formatCurrency(cvtCur(amt), displayCurrency);
+  const cvtCur = (amt: number, from: string = 'INR') => convertCurrency(amt, from, displayCurrency);
+  const fmtCur = (amt: number, from: string = 'INR') => formatCurrency(cvtCur(amt, from), displayCurrency);
+  const fmtUnit = (v: number, unit: 'L' | 'Cr' = 'L') => {
+    const converted = cvtCur(v);
+    const cur = CURRENCIES.find(c => c.code === displayCurrency);
+    const sym = cur ? cur.symbol : '';
+    if (displayCurrency === 'INR') {
+      return unit === 'Cr' ? `${sym}${(converted / 10000000).toFixed(2)} Cr` : `${sym}${(converted / 100000).toFixed(2)} L`;
+    }
+    // For non-INR show human-friendly abbreviated numbers
+    if (Math.abs(converted) >= 1000000) return `${sym}${(converted / 1000000).toFixed(2)}M`;
+    if (Math.abs(converted) >= 1000) return `${sym}${(converted / 1000).toFixed(1)}k`;
+    return `${sym}${Math.round(converted).toLocaleString()}`;
+  };
   void CURRENCIES.find(c => c.code === displayCurrency)?.symbol; // curSym reserved
 
   useEffect(() => { fetchBudgetData(); }, [selectedFiscalYear]);
@@ -255,7 +263,7 @@ export default function BudgetPage() {
     labels: monthLabels,
     datasets: [
       {
-        label: 'AI Cost Estimate (₹L)',
+        label: `AI Cost Estimate (${displayCurrency})`,
         data: genData(68, months, 1.2),
         fill: true,
         backgroundColor: 'rgba(245,158,11,0.12)',
@@ -266,7 +274,7 @@ export default function BudgetPage() {
         borderDash: [5, 3]
       },
       {
-        label: 'Sanctioned (₹L)',
+        label: `Sanctioned (${displayCurrency})`,
         data: genData(75, months, 1.0),
         fill: true,
         backgroundColor: 'rgba(59,130,246,0.12)',
@@ -276,7 +284,7 @@ export default function BudgetPage() {
         pointRadius: 3
       },
       {
-        label: 'Actual Spent (₹L)',
+        label: `Actual Spent (${displayCurrency})`,
         data: genData(58, months, 1.5),
         fill: true,
         backgroundColor: 'rgba(34,197,94,0.12)',
@@ -290,16 +298,16 @@ export default function BudgetPage() {
 
   // 2. Category allocation bar
   const catLabels   = categories.length > 0 ? categories.map(c => c.category) : ['Road Repair', 'Lighting', 'Safety Infra', 'Technology', 'Maintenance'];
-  const catAllocArr = categories.length > 0 ? categories.map(c => +(c.allocated / 100000).toFixed(1)) : [150, 80, 120, 45, 70];
-  const catSpentArr = categories.length > 0 ? categories.map(c => +(c.spent / 100000).toFixed(1))     : [120, 62, 95, 38, 55];
-  const catAvailArr = categories.length > 0 ? categories.map(c => +(c.available / 100000).toFixed(1)) : [30, 18, 25, 7, 15];
+  const catAllocArr = categories.length > 0 ? categories.map(c => +(cvtCur(c.allocated) / 100000).toFixed(1)) : [150, 80, 120, 45, 70];
+  const catSpentArr = categories.length > 0 ? categories.map(c => +(cvtCur(c.spent) / 100000).toFixed(1))     : [120, 62, 95, 38, 55];
+  const catAvailArr = categories.length > 0 ? categories.map(c => +(cvtCur(c.available) / 100000).toFixed(1)) : [30, 18, 25, 7, 15];
 
   const categoryBar = {
     labels: catLabels,
     datasets: [
-      { label: 'Allocated (₹L)', data: catAllocArr, backgroundColor: 'rgba(59,130,246,0.8)', borderRadius: 6, borderWidth: 0 },
-      { label: 'Spent (₹L)',     data: catSpentArr, backgroundColor: 'rgba(34,197,94,0.8)',  borderRadius: 6, borderWidth: 0 },
-      { label: 'Available (₹L)', data: catAvailArr, backgroundColor: 'rgba(168,85,247,0.8)', borderRadius: 6, borderWidth: 0 }
+      { label: `Allocated (${displayCurrency})`, data: catAllocArr, backgroundColor: 'rgba(59,130,246,0.8)', borderRadius: 6, borderWidth: 0 },
+      { label: `Spent (${displayCurrency})`,     data: catSpentArr, backgroundColor: 'rgba(34,197,94,0.8)',  borderRadius: 6, borderWidth: 0 },
+      { label: `Available (${displayCurrency})`, data: catAvailArr, backgroundColor: 'rgba(168,85,247,0.8)', borderRadius: 6, borderWidth: 0 }
     ]
   };
 
@@ -337,20 +345,20 @@ export default function BudgetPage() {
     labels: allIssueExpenses.map(e => e.issueType.split(' ').slice(0, 2).join(' ')),
     datasets: [
       {
-        label: 'AI Cost Est. (₹)',
-        data: allIssueExpenses.map(e => e.aiCostEstimate),
+        label: `AI Cost Est. (${displayCurrency})`,
+        data: allIssueExpenses.map(e => cvtCur(e.aiCostEstimate)),
         backgroundColor: 'rgba(245,158,11,0.8)',
         borderRadius: 6
       },
       {
-        label: 'Sanctioned (₹)',
-        data: allIssueExpenses.map(e => e.sanctionedAmount),
+        label: `Sanctioned (${displayCurrency})`,
+        data: allIssueExpenses.map(e => cvtCur(e.sanctionedAmount)),
         backgroundColor: 'rgba(59,130,246,0.8)',
         borderRadius: 6
       },
       {
-        label: 'Actual Spent (₹)',
-        data: allIssueExpenses.map(e => e.actualSpent),
+        label: `Actual Spent (${displayCurrency})`,
+        data: allIssueExpenses.map(e => cvtCur(e.actualSpent)),
         backgroundColor: 'rgba(34,197,94,0.8)',
         borderRadius: 6
       }
@@ -464,11 +472,10 @@ export default function BudgetPage() {
 
         {/* ── KPI Cards (always visible) ── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          {[
-            { label: 'Total AI Estimate', value: fmt(totalAICost), icon: '🤖', color: 'from-yellow-600 to-yellow-700' },
-            { label: 'Total Sanctioned',  value: fmt(totalSanc),   icon: '✅', color: 'from-blue-600  to-blue-700'  },
-            { label: 'Total Spent',       value: fmt(totalSpentE), icon: '💸', color: 'from-green-600 to-green-700' },
-            { label: 'Surplus / Savings', value: fmt(totalPL),     icon: '📈', color: 'from-teal-600  to-teal-700'  },
+            { label: 'Total AI Estimate', value: fmtUnit(totalAICost), icon: '🤖', color: 'from-yellow-600 to-yellow-700' },
+            { label: 'Total Sanctioned',  value: fmtUnit(totalSanc),   icon: '✅', color: 'from-blue-600  to-blue-700'  },
+            { label: 'Total Spent',       value: fmtUnit(totalSpentE), icon: '💸', color: 'from-green-600 to-green-700' },
+            { label: 'Surplus / Savings', value: fmtUnit(totalPL),     icon: '📈', color: 'from-teal-600  to-teal-700'  },
             { label: 'Avg Feasibility',   value: `${avgFeasibility}%`, icon: '🎯', color: 'from-purple-600 to-purple-700' },
             { label: 'Budget Utilization',value: `${utilRate}%`,   icon: '📊', color: 'from-rose-600  to-rose-700'  }
           ].map((card, i) => (
@@ -497,7 +504,7 @@ export default function BudgetPage() {
               {/* Category Budget Bar */}
               <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
                 <h3 className="text-lg font-bold text-white mb-1">🗂️ Category-wise Budget</h3>
-                <p className="text-xs text-gray-500 mb-4">Allocated vs spent vs available (₹ Lakhs)</p>
+                <p className="text-xs text-gray-500 mb-4">Allocated vs spent vs available ({displayCurrency})</p>
                 <Bar data={categoryBar} options={darkChart as any} />
               </div>
 
@@ -544,9 +551,9 @@ export default function BudgetPage() {
                       return (
                         <tr key={cat.category_id} className="border-b border-gray-800 hover:bg-gray-800/40 transition">
                           <td className="py-3 px-3 text-white font-medium">{cat.category}</td>
-                          <td className="py-3 px-3 text-blue-400">{fmt(cat.allocated)}</td>
-                          <td className="py-3 px-3 text-green-400">{fmt(cat.spent)}</td>
-                          <td className="py-3 px-3 text-purple-400">{fmt(cat.available)}</td>
+                          <td className="py-3 px-3 text-blue-400">{fmtCur(cat.allocated)}</td>
+                          <td className="py-3 px-3 text-green-400">{fmtCur(cat.spent)}</td>
+                          <td className="py-3 px-3 text-purple-400">{fmtCur(cat.available)}</td>
                           <td className="py-3 px-3">
                             <div className="flex items-center gap-2">
                               <div className="w-24 bg-gray-700 rounded-full h-1.5">
@@ -650,11 +657,11 @@ export default function BudgetPage() {
                             </span>
                           </td>
                           <td className="py-3 px-3">{statusBadge(exp.status)}</td>
-                          <td className="py-3 px-3 text-yellow-400 font-semibold whitespace-nowrap">₹{exp.aiCostEstimate.toLocaleString()}</td>
-                          <td className="py-3 px-3 text-blue-400 whitespace-nowrap">{exp.sanctionedAmount > 0 ? `₹${exp.sanctionedAmount.toLocaleString()}` : '—'}</td>
-                          <td className="py-3 px-3 text-green-400 whitespace-nowrap">{exp.actualSpent > 0 ? `₹${exp.actualSpent.toLocaleString()}` : '—'}</td>
+                          <td className="py-3 px-3 text-yellow-400 font-semibold whitespace-nowrap">{fmtCur(exp.aiCostEstimate)}</td>
+                          <td className="py-3 px-3 text-blue-400 whitespace-nowrap">{exp.sanctionedAmount > 0 ? fmtCur(exp.sanctionedAmount) : '—'}</td>
+                          <td className="py-3 px-3 text-green-400 whitespace-nowrap">{exp.actualSpent > 0 ? fmtCur(exp.actualSpent) : '—'}</td>
                           <td className={`py-3 px-3 font-semibold whitespace-nowrap ${savings > 0 ? 'text-green-400' : savings < 0 ? 'text-red-400' : 'text-gray-500'}`}>
-                            {exp.actualSpent > 0 ? (savings > 0 ? `+₹${savings.toLocaleString()}` : `₹${savings.toLocaleString()}`) : '—'}
+                            {exp.actualSpent > 0 ? (savings > 0 ? `+${fmtCur(savings)}` : fmtCur(savings)) : '—'}
                           </td>
                           <td className={`py-3 px-3 font-bold ${feasColor(exp.feasibilityScore)}`}>{exp.feasibilityScore}%</td>
                           <td className="py-3 px-3 text-teal-400 font-bold whitespace-nowrap">{exp.roiMultiplier}x</td>
@@ -684,10 +691,10 @@ export default function BudgetPage() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: 'AI Cost Estimate',     value: `₹${selectedIssue.aiCostEstimate.toLocaleString()}`,  color: 'text-yellow-400' },
-                    { label: 'Sanctioned Amount',    value: selectedIssue.sanctionedAmount > 0 ? `₹${selectedIssue.sanctionedAmount.toLocaleString()}` : 'Not yet', color: 'text-blue-400' },
-                    { label: 'Actual Spent',         value: selectedIssue.actualSpent > 0 ? `₹${selectedIssue.actualSpent.toLocaleString()}` : 'Pending', color: 'text-green-400' },
-                    { label: 'Savings vs Estimate',  value: selectedIssue.actualSpent > 0 ? `₹${(selectedIssue.aiCostEstimate - selectedIssue.actualSpent).toLocaleString()}` : '—', color: 'text-teal-400' },
+                    { label: 'AI Cost Estimate',     value: fmtCur(selectedIssue.aiCostEstimate),  color: 'text-yellow-400' },
+                    { label: 'Sanctioned Amount',    value: selectedIssue.sanctionedAmount > 0 ? fmtCur(selectedIssue.sanctionedAmount) : 'Not yet', color: 'text-blue-400' },
+                    { label: 'Actual Spent',         value: selectedIssue.actualSpent > 0 ? fmtCur(selectedIssue.actualSpent) : 'Pending', color: 'text-green-400' },
+                    { label: 'Savings vs Estimate',  value: selectedIssue.actualSpent > 0 ? fmtCur(selectedIssue.aiCostEstimate - selectedIssue.actualSpent) : '—', color: 'text-teal-400' },
                     { label: 'Feasibility Score',    value: `${selectedIssue.feasibilityScore}/100`,              color: feasColor(selectedIssue.feasibilityScore) },
                     { label: 'ROI Multiplier',       value: `${selectedIssue.roiMultiplier}x`,                    color: 'text-teal-400' },
                     { label: 'Crime Reduction',      value: selectedIssue.crimeReductionPct > 0 ? `-${selectedIssue.crimeReductionPct}%` : 'N/A', color: 'text-purple-400' },
@@ -752,10 +759,8 @@ export default function BudgetPage() {
                 <Bar data={{
                   labels: allIssueExpenses.map(e => e.issueType.split(' ').slice(0, 2).join(' ')),
                   datasets: [{
-                    label: 'Net Savings (₹)',
-                    data: allIssueExpenses.map(e =>
-                      e.actualSpent > 0 ? e.sanctionedAmount - e.actualSpent : e.aiCostEstimate * 0.05
-                    ),
+                    label: `Net Savings (${displayCurrency})`,
+                    data: allIssueExpenses.map(e => cvtCur(e.actualSpent > 0 ? e.sanctionedAmount - e.actualSpent : e.aiCostEstimate * 0.05)),
                     backgroundColor: allIssueExpenses.map(e => {
                       const val = e.actualSpent > 0 ? e.sanctionedAmount - e.actualSpent : e.aiCostEstimate * 0.05;
                       return val >= 0 ? 'rgba(34,197,94,0.8)' : 'rgba(239,68,68,0.8)';
@@ -806,7 +811,7 @@ export default function BudgetPage() {
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between">
                       <span className="text-gray-500">AI Estimate</span>
-                      <span className="text-yellow-400 font-semibold">₹{exp.aiCostEstimate.toLocaleString()}</span>
+                      <span className="text-yellow-400 font-semibold">{fmtCur(exp.aiCostEstimate)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">ROI</span>
@@ -854,7 +859,7 @@ export default function BudgetPage() {
                     <h4 className="text-lg font-bold text-white">{a.source_name}</h4>
                     <p className="text-sm text-gray-400 mt-0.5">{a.source_type.replace('_', ' ').toUpperCase()} · {a.fiscal_year}</p>
                   </div>
-                  <span className="text-2xl font-bold text-green-400">{fmt(a.amount, 'Cr')}</span>
+                          <span className="text-2xl font-bold text-green-400">{fmtUnit(a.amount, 'Cr')}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                   <div><span className="text-gray-500">Sanction No:</span> <span className="text-gray-200 ml-1 font-mono">{a.sanction_number}</span></div>
@@ -907,7 +912,7 @@ export default function BudgetPage() {
                           <div className="w-20 bg-gray-700 rounded-full h-1.5">
                             <div className="bg-teal-500 h-1.5 rounded-full" style={{ width: `${s.pct}%` }} />
                           </div>
-                          <span className="text-green-400 font-bold text-sm">{fmt(s.amount, 'Cr')}</span>
+                          <span className="text-green-400 font-bold text-sm">{fmtUnit(s.amount, 'Cr')}</span>
                         </div>
                       </div>
                     ))}
@@ -920,14 +925,14 @@ export default function BudgetPage() {
                       <div key={e.id} className="p-3 bg-gray-800/50 rounded-lg">
                         <div className="flex justify-between mb-1">
                           <span className="text-white text-sm font-medium">{e.issueType}</span>
-                          <span className="text-green-400 text-sm font-bold">₹{e.actualSpent.toLocaleString()}</span>
+                          <span className="text-green-400 text-sm font-bold">{fmtCur(e.actualSpent)}</span>
                         </div>
                         <div className="flex justify-between text-xs text-gray-500">
                           <span>{e.location}</span>
                           <span className={e.sanctionedAmount - e.actualSpent >= 0 ? 'text-green-400' : 'text-red-400'}>
                             {e.sanctionedAmount - e.actualSpent >= 0
-                              ? `Saved ₹${(e.sanctionedAmount - e.actualSpent).toLocaleString()}`
-                              : `Over by ₹${(e.actualSpent - e.sanctionedAmount).toLocaleString()}`}
+                              ? `Saved ${fmtCur(e.sanctionedAmount - e.actualSpent)}`
+                              : `Over by ${fmtCur(e.actualSpent - e.sanctionedAmount)}`}
                           </span>
                         </div>
                       </div>
