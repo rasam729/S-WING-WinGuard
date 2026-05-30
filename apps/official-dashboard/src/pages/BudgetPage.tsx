@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useIssuesStore } from '../store/issuesStore';
-import { CURRENCIES, convertCurrency, formatCurrency } from '../data/globalData';
+import { CURRENCIES, convertCurrency, formatCurrency, fetchLiveRates } from '../data/globalData';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -210,6 +210,21 @@ export default function BudgetPage() {
   void CURRENCIES.find(c => c.code === displayCurrency)?.symbol; // curSym reserved
 
   useEffect(() => { fetchBudgetData(); }, [selectedFiscalYear]);
+
+  // Fetch live exchange rates once on mount to improve conversion accuracy
+  const [, setRatesLoaded] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      try {
+        const r = await fetchLiveRates();
+        if (mounted && r) setRatesLoaded(true);
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const fetchBudgetData = async () => {
     try {
@@ -472,6 +487,7 @@ export default function BudgetPage() {
 
         {/* ── KPI Cards (always visible) ── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          {[
             { label: 'Total AI Estimate', value: fmtUnit(totalAICost), icon: '🤖', color: 'from-yellow-600 to-yellow-700' },
             { label: 'Total Sanctioned',  value: fmtUnit(totalSanc),   icon: '✅', color: 'from-blue-600  to-blue-700'  },
             { label: 'Total Spent',       value: fmtUnit(totalSpentE), icon: '💸', color: 'from-green-600 to-green-700' },

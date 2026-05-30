@@ -89,7 +89,39 @@ export const CURRENCIES: Currency[] = [
 ];
 
 // Convert amount from one currency to another
+let LIVE_RATE_MAP: Record<string, number> | null = null;
+
+export async function fetchLiveRates(): Promise<Record<string, number> | null> {
+  try {
+    const symbols = CURRENCIES.map(c => c.code).join(',');
+    const res = await fetch(`https://api.exchangerate.host/latest?base=USD&symbols=${symbols}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || !data.rates) return null;
+    LIVE_RATE_MAP = data.rates as Record<string, number>;
+    // Update fallback CURRENCIES ratesToUSD for convenience
+    CURRENCIES.forEach(c => {
+      if (LIVE_RATE_MAP && LIVE_RATE_MAP[c.code]) c.rateToUSD = LIVE_RATE_MAP[c.code];
+    });
+    return LIVE_RATE_MAP;
+  } catch (e) {
+    console.warn('Live rates fetch failed:', e);
+    return null;
+  }
+}
+
+export function getLiveRates(): Record<string, number> | null { return LIVE_RATE_MAP; }
+
 export function convertCurrency(amount: number, fromCode: string, toCode: string): number {
+  // Prefer live rates if available
+  if (LIVE_RATE_MAP) {
+    const fromRate = LIVE_RATE_MAP[fromCode] ?? CURRENCIES.find(c => c.code === fromCode)?.rateToUSD;
+    const toRate = LIVE_RATE_MAP[toCode] ?? CURRENCIES.find(c => c.code === toCode)?.rateToUSD;
+    if (fromRate && toRate) {
+      const inUSD = amount / fromRate;
+      return inUSD * toRate;
+    }
+  }
   const from = CURRENCIES.find(c => c.code === fromCode);
   const to   = CURRENCIES.find(c => c.code === toCode);
   if (!from || !to) return amount;
