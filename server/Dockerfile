@@ -22,7 +22,7 @@ WORKDIR /app
 
 # Copy package files and install production dependencies only
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --production
 
 # Copy built application
 COPY --from=builder /app/dist ./dist

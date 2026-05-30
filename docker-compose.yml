@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   mongodb:
@@ -15,6 +15,21 @@ services:
       - winguard-network
     restart: unless-stopped
 
+  postgres:
+    image: postgres:15
+    container_name: winguard-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: winguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - winguard-network
+    restart: unless-stopped
+
   server:
     build:
       context: ./server
@@ -23,17 +38,18 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: production
-      MONGODB_URI: mongodb://mongodb:27017/winguard
-      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
-      COORDINATE_CENTER_LAT: ${COORDINATE_CENTER_LAT:-40.7128}
-      COORDINATE_CENTER_LNG: ${COORDINATE_CENTER_LNG:--74.0060}
-      OPERATIONAL_RADIUS: ${OPERATIONAL_RADIUS:-5000}
-      UPLOAD_DIR: /app/uploads
-    volumes:
-      - ./server/uploads:/app/uploads
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: winguard
+      JWT_SECRET: super-secret-change-in-prod
+      CORS_ORIGIN: http://localhost:5173,http://localhost:5174
     depends_on:
       - mongodb
+      - postgres
+    volumes:
+      - ./server/uploads:/app/uploads
     networks:
       - winguard-network
     restart: unless-stopped
@@ -68,6 +84,7 @@ services:
 
 volumes:
   mongodb_data:
+  postgres_data:
 
 networks:
   winguard-network:

@@ -314,7 +314,15 @@ No reports yet
 <div class="card-title" style="justify-content:space-between;">
 <span><i class="ti ti-map" aria-hidden="true"></i> Live issue map — Bengaluru</span>
 </div>
-<div class="map-legend">
+
+
+<div class="road-layer-controls" style="margin-top:8px; margin-bottom:8px; font-size:13px; color:var(--cl-muted);">
+  <label><input type="checkbox" id="nh-layer-checkbox" checked onchange="toggleRoadLayer('NH', this.checked)"> National Highways (NH)</label>
+  <label style="margin-left:12px;"><input type="checkbox" id="sh-layer-checkbox" checked onchange="toggleRoadLayer('SH', this.checked)"> State Highways (SH)</label>
+  <label style="margin-left:12px;"><input type="checkbox" id="mdr-layer-checkbox" checked onchange="toggleRoadLayer('MDR', this.checked)"> Major District Roads (MDR)</label>
+</div>
+
+<script src="road_layers.js"></script>
 <span><span class="legend-dot" style="background:#E24B4A;"></span>Pothole</span>
 <span><span class="legend-dot" style="background:#EF9F27;"></span>Road crack</span>
 <span><span class="legend-dot" style="background:#378ADD;"></span>Streetlight</span>
@@ -854,6 +862,7 @@ function initMap() {
   
   mapInitialized = true;
   leafletMap = L.map('blr-map').setView([12.9716, 77.5946], 12);
+  initRoadLayers();
   
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
