@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Alert {
   notification_id: number;
@@ -9,10 +10,14 @@ interface Alert {
   type: 'info' | 'warning' | 'success' | 'danger';
   sent_at: string;
   read_at: string | null;
+  report_id?: number;
+  category?: string;
+  report_status?: string;
 }
 
 const AlertsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { token, user } = useAuth();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -25,33 +30,65 @@ const AlertsPage: React.FC = () => {
     const socket = io('http://localhost:3000');
     
     socket.on('new-notification', (data: any) => {
-      console.log('New notification received:', data);
+      console.log('📬 New notification received in AlertsPage:', data);
       fetchNotifications(); // Refresh notifications
     });
     
-    socket.on('report-updated', (data: any) => {
-      console.log('Report status updated:', data);
+    socket.on('report-resolved', (data: any) => {
+      console.log('🎉 Report resolved notification in AlertsPage:', data);
+      fetchNotifications(); // Refresh to show resolution notification
+    });
+    
+    socket.on('report-status-changed', (data: any) => {
+      console.log('📊 Report status changed in AlertsPage:', data);
       fetchNotifications(); // Refresh to get new status update notifications
     });
     
-    // Refresh every 30 seconds as backup
-    const interval = setInterval(fetchNotifications, 30000);
+    // Refresh every 10 seconds for testing (change to 30 seconds in production)
+    const interval = setInterval(fetchNotifications, 10000);
     
     return () => {
       socket.disconnect();
       clearInterval(interval);
     };
-  }, []);
+  }, [token]);
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/notifications');
-      const data = await response.json();
-      if (data.success) {
-        setAlerts(data.data);
+      console.log('🔄 Fetching notifications for user:', user?.userId);
+      
+      // Fetch user's reports first to get their report IDs
+      const reportsResponse = await fetch('http://localhost:3000/api/reports', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!reportsResponse.ok) {
+        throw new Error('Failed to fetch reports');
+      }
+      
+      const reportsData = await reportsResponse.json();
+      const userReportIds = reportsData.data.reports.map((r: any) => r.report_id);
+      
+      console.log('📋 User report IDs:', userReportIds);
+      
+      // Fetch all notifications
+      const notificationsResponse = await fetch('http://localhost:3000/api/notifications');
+      const notificationsData = await notificationsResponse.json();
+      
+      if (notificationsData.success) {
+        // Filter notifications to only show those related to user's reports
+        const userNotifications = notificationsData.data.filter((notif: Alert) => 
+          notif.user_id === user?.userId || 
+          (notif.report_id && userReportIds.includes(notif.report_id))
+        );
+        
+        console.log('✅ Filtered notifications:', userNotifications.length);
+        setAlerts(userNotifications);
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('❌ Error fetching notifications:', error);
     } finally {
       setLoading(false);
     }
