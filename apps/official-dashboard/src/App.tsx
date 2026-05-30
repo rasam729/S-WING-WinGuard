@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import ViosaChatbot from './components/ViosaChatbot';
 import { useAuthStore } from './store/authStore';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -12,6 +13,7 @@ import BudgetPage from './pages/BudgetPage';
 import ContractorsPage from './pages/ContractorsPage';
 import MaintenancePage from './pages/MaintenancePage';
 import EngineersPage from './pages/EngineersPage';
+import RoadInfoPage from './pages/RoadInfoPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -37,10 +39,12 @@ function App() {
           <Route path="/contractors" element={<ContractorsPage />} />
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/engineers" element={<EngineersPage />} />
+          <Route path="/road-info" element={<RoadInfoPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <ViosaChatbot />
     </Router>
   );
 }

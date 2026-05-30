@@ -98,10 +98,10 @@ const MapPage: React.FC = () => {
     try {
       // Try multiple search strategies for better results
       const searches = [
-        // Primary search with India filter
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&countrycodes=in&limit=5&addressdetails=1`),
-        // Backup search without country filter for better coverage
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery + ', India')}&limit=3&addressdetails=1`)
+      // Primary: global search
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5&addressdetails=1`),
+        // Secondary: slight bias toward user's likely region
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=3&addressdetails=1&accept-language=en`)
       ];
       
       const responses = await Promise.all(searches);
@@ -759,7 +759,7 @@ const MapPage: React.FC = () => {
               <span className="material-symbols-outlined text-gray-400 flex-shrink-0">search</span>
               <input
                 className="pro-search bg-transparent border-none focus:ring-0 flex-1 text-gray-800 placeholder-gray-400 font-medium outline-none min-w-0"
-                placeholder="Search any place in India..."
+                placeholder="Search any place globally…"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -1068,6 +1068,18 @@ const MapPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Safe Route floating button */}
+      <div className="absolute bottom-24 right-4 z-[998] pointer-events-auto">
+        <button
+          onClick={() => navigate('/safe-route')}
+          className="flex flex-col items-center gap-1 bg-gradient-to-br from-green-500 to-teal-600 text-white px-4 py-3 rounded-2xl shadow-2xl hover:scale-105 transition-transform border border-green-400"
+          title="Safe Route Planner"
+        >
+          <span className="text-xl">🛡️</span>
+          <span className="text-xs font-bold">Safe Route</span>
+        </button>
+      </div>
 
       {/* Modern Route Info Panel - Shows active route details */}
       {activeRoute && routeStats && (

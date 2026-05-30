@@ -6,6 +6,7 @@ import AlertsPage from './pages/AlertsPage';
 import StatsPage from './pages/StatsPage';
 import ProfilePage from './pages/ProfilePage';
 import ReportIssuePage from './pages/ReportIssuePage';
+import SafeRoutePage from './pages/SafeRoutePage';
 import './styles/index.css';
 
 // Protected Route Component
@@ -69,6 +70,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ReportIssuePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/safe-route"
+            element={
+              <ProtectedRoute>
+                <SafeRoutePage />
               </ProtectedRoute>
             }
           />

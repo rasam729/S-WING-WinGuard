@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useIssuesStore } from '../store/issuesStore';
@@ -14,7 +14,7 @@ export default function StatsPage() {
   const calculateSafetyScore = (): number => {
     if (stats.total === 0) return 100;
     
-    const activeIssues = stats.critical + stats.inProgress;
+    void (stats.critical + stats.inProgress); // activeIssues - used in weightedPenalty below
     const criticalWeight = 10; // Critical issues have 10x impact
     const inProgressWeight = 5; // In-progress issues have 5x impact
     
@@ -60,7 +60,7 @@ export default function StatsPage() {
   // Generate time-series data for line chart (last 7 days)
   const generateTimeSeriesData = () => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days.map((day, index) => ({
+    return days.map((day, _index) => ({
       day,
       critical: Math.floor(Math.random() * 5) + 2,
       inProgress: Math.floor(Math.random() * 4) + 1,

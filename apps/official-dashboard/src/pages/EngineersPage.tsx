@@ -97,7 +97,7 @@ export default function EngineersPage() {
   }
 
   const availableEngineers = engineers.filter(e => e.availability === 'available');
-  const busyEngineers = engineers.filter(e => e.availability === 'busy');
+  void engineers.filter(e => e.availability === 'busy'); // busyEngineers: reserved for future display
   const totalLoad = engineers.reduce((sum, e) => sum + e.current_load, 0);
   const avgResolutionRate = engineers.length > 0
     ? (engineers.reduce((sum, e) => sum + e.resolution_rate, 0) / engineers.length).toFixed(1)
