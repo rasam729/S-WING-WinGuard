@@ -46,26 +46,47 @@ export default function IssuesPage() {
   const handleToggleResolved = async (issueId: number, currentStatus: 'critical' | 'in_progress' | 'resolved') => {
     setUpdatingId(issueId);
     try {
-      const newStatus = currentStatus === 'resolved' ? 'critical' : 'resolved';
+      const token = useAuthStore.getState().token;
       
-      updateIssueStatus(issueId, newStatus);
-
-      // Send notification to citizen app
-      if (newStatus === 'resolved') {
-        const issue = issues.find(i => i.id === issueId);
-        await fetch('/api/notifications', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: 1,
-            message: `Your report about ${issue?.type} has been resolved!`,
-            type: 'success'
-          })
+      if (currentStatus === 'resolved') {
+        // Unresolve - just update local state
+        updateIssueStatus(issueId, 'critical');
+      } else {
+        // Resolve - call backend API
+        const response = await fetch(`http://localhost:3000/api/reports/${issueId}/resolve`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
+        
+        if (response.ok) {
+          const data = await response.json();
+          updateIssueStatus(issueId, 'resolved');
+          
+          // Show success notification
+          alert('✅ Report marked as resolved!\n\n' +
+                '📢 Citizen has been notified via:\n' +
+                '• Browser notification\n' +
+                '• In-app alert\n' +
+                '• Stats page update\n\n' +
+                'The report will disappear from the map.');
+          
+          // Emit WebSocket event (if socket is available)
+          if (window.socket) {
+            window.socket.emit('report-resolved', {
+              reportId: issueId,
+              category: data.data?.category || 'Report',
+              userId: data.data?.user_id
+            });
+          }
+        } else {
+          throw new Error('Failed to resolve report');
+        }
       }
     } catch (error) {
       console.error('Error updating issue:', error);
-      alert('Failed to update issue status');
+      alert('❌ Failed to update status. Please try again.');
     } finally {
       setUpdatingId(null);
     }
@@ -339,7 +360,11 @@ export default function IssuesPage() {
               {citizenReports.map((report) => (
                 <div
                   key={`report-${report.report_id}`}
-                  className="bg-white rounded-xl shadow-sm border-2 border-purple-200 p-6 transition-all hover:shadow-md"
+                  className={`bg-white rounded-xl shadow-sm border-2 p-6 transition-all ${
+                    report.status === 'Resolved' 
+                      ? 'border-green-200 bg-green-50/30' 
+                      : 'border-purple-200 hover:shadow-md'
+                  }`}
                 >
                   <div className="flex items-start gap-6">
                     {/* Report Icon & Severity */}
@@ -368,8 +393,12 @@ export default function IssuesPage() {
                         <div>
                           <div className="flex items-center gap-3 mb-2">
                             <h3 className="text-xl font-bold text-gray-900">{report.category}</h3>
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-300">
-                              Citizen Report
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              report.status === 'Resolved' 
+                                ? 'bg-green-100 text-green-700 border border-green-300'
+                                : 'bg-purple-100 text-purple-700 border border-purple-300'
+                            }`}>
+                              {report.status === 'Resolved' ? 'Resolved' : 'Citizen Report'}
                             </span>
                           </div>
                           <p className="text-gray-700 mb-3 leading-relaxed">{report.description}</p>
@@ -395,7 +424,7 @@ export default function IssuesPage() {
                       {report.photo_url && (
                         <div className="mt-3 mb-3">
                           <img
-                            src={report.photo_url}
+                            src={`http://localhost:3000${report.photo_url}`}
                             alt="Report"
                             className="w-48 h-48 object-cover rounded-lg border-2 border-gray-200"
                           />
@@ -404,6 +433,61 @@ export default function IssuesPage() {
 
                       {/* Action Buttons */}
                       <div className="flex flex-wrap items-center gap-3">
+                        {/* Resolve Button for Citizen Reports */}
+                        <button
+                          onClick={async () => {
+                            setUpdatingId(report.report_id);
+                            try {
+                              const token = useAuthStore.getState().token;
+                              const response = await fetch(`http://localhost:3000/api/reports/${report.report_id}/resolve`, {
+                                method: 'PATCH',
+                                headers: {
+                                  'Authorization': `Bearer ${token}`
+                                }
+                              });
+                              
+                              if (response.ok) {
+                                alert('✅ Report marked as resolved!\n\n' +
+                                      '📢 Citizen has been notified via:\n' +
+                                      '• Browser notification\n' +
+                                      '• In-app alert\n' +
+                                      '• Stats page update\n\n' +
+                                      'The report will disappear from the map.');
+                                
+                                // Refresh the reports list
+                                fetchCitizenReports();
+                              } else {
+                                throw new Error('Failed to resolve report');
+                              }
+                            } catch (error) {
+                              console.error('Error resolving report:', error);
+                              alert('❌ Failed to resolve report. Please try again.');
+                            } finally {
+                              setUpdatingId(null);
+                            }
+                          }}
+                          disabled={updatingId === report.report_id || report.status === 'Resolved'}
+                          className={`px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
+                            report.status === 'Resolved'
+                              ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700 shadow-md'
+                          } disabled:opacity-50`}
+                        >
+                          {updatingId === report.report_id ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Resolving...</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                              </svg>
+                              <span>{report.status === 'Resolved' ? 'Already Resolved' : 'Mark as Resolved'}</span>
+                            </>
+                          )}
+                        </button>
+                        
                         <button 
                           onClick={() => navigate('/reports')}
                           className="px-6 py-3 bg-teal-600 text-white rounded-xl text-sm font-bold hover:bg-teal-700 transition-all shadow-md flex items-center gap-2"
