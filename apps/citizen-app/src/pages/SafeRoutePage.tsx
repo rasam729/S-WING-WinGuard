@@ -107,6 +107,13 @@ function FitBounds({ bounds }: { bounds: [[number, number], [number, number]] })
   return null;
 }
 
+// Map fly to component
+function MapFlyTo({ center }: { center: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => { if (center) map.flyTo(center, 15, { duration: 2 }); }, [center, map]);
+  return null;
+}
+
 // Custom icons
 const originIcon = L.divIcon({
   className: '',
@@ -381,8 +388,11 @@ export default function SafeRoutePage() {
             />
           ))}
 
-          {origin && <Marker position={origin} icon={originIcon}><Popup>📍 Start</Popup></Marker>}
-          {dest   && <Marker position={dest}   icon={destIcon}>  <Popup>🏁 Destination</Popup></Marker>}
+          {origin && !dest && <MapFlyTo center={origin} />}
+          {!origin && dest && <MapFlyTo center={dest} />}
+
+          {origin && <Marker position={origin} icon={originIcon}><Popup><div className="text-sm">📍 Start<br/><span className="text-xs text-gray-500">Coords: {origin[0].toFixed(5)}, {origin[1].toFixed(5)}</span></div></Popup></Marker>}
+          {dest   && <Marker position={dest}   icon={destIcon}>  <Popup><div className="text-sm">🏁 Destination<br/><span className="text-xs text-gray-500">Coords: {dest[0].toFixed(5)}, {dest[1].toFixed(5)}</span></div></Popup></Marker>}
         </MapContainer>
 
         {/* Loading overlay */}

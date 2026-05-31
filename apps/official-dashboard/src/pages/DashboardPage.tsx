@@ -89,6 +89,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchedLocation, setSearchedLocation] = useState<{lat: number, lon: number, name: string} | null>(null);
   const [showCoordinatePicker, setShowCoordinatePicker] = useState(false);
   const [pickedCoordinates, setPickedCoordinates] = useState<[number, number] | null>(null);
   const [pickedPlaceName, setPickedPlaceName] = useState<string>('');
@@ -548,6 +549,7 @@ export default function DashboardPage() {
       });
     }
     
+    setSearchedLocation({ lat, lon, name: result.display_name });
     setSearchResults([]);
     setSearchQuery('');
   };
@@ -1371,6 +1373,41 @@ export default function DashboardPage() {
                         <p className="font-bold text-green-600">New Installation Location</p>
                         <p className="text-xs text-gray-600 mt-1">
                           {installType === 'streetlight' ? 'Streetlight' : 'Police Booth'}
+                        </p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
+                
+                {searchedLocation && (
+                  <Marker
+                    position={[searchedLocation.lat, searchedLocation.lon]}
+                    icon={L.divIcon({
+                      className: 'search-marker',
+                      html: `
+                        <div style="
+                          width: 30px;
+                          height: 30px;
+                          background: #ef4444;
+                          border-radius: 50% 50% 50% 0;
+                          transform: rotate(-45deg);
+                          border: 3px solid white;
+                          box-shadow: 0 4px 16px rgba(239, 68, 68, 0.6);
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                        ">
+                        </div>
+                      `,
+                      iconSize: [30, 30],
+                      iconAnchor: [15, 30],
+                    })}
+                  >
+                    <Popup>
+                      <div className="text-sm">
+                        <p className="font-bold text-gray-900">{searchedLocation.name}</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Coordinates: {searchedLocation.lat.toFixed(5)}, {searchedLocation.lon.toFixed(5)}
                         </p>
                       </div>
                     </Popup>

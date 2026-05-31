@@ -10,6 +10,7 @@ type Props = {
 export default function ContractorAssignModal({ open, issueId, onClose, onAssigned }: Props) {
   const [contractors, setContractors] = useState<any[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [budgetAmount, setBudgetAmount] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -35,13 +36,39 @@ export default function ContractorAssignModal({ open, issueId, onClose, onAssign
         body: JSON.stringify({ issue_id: issueId, assigned_by: 'dashboard-ui' })
       });
 
-      // update the report to include contractor info
+      // update the report to include contractor info and budget
       const contractor = contractors.find(c => c.contractor_id === selected) || contractors.find(c => c.contractor_id == selected);
+      
       await fetch(`/api/reports/${issueId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractor_id: contractor?.contractor_id, contractor_name: contractor?.company_name || contractor?.contractor_name })
+        body: JSON.stringify({
+          contractor_id: contractor?.contractor_id,
+          contractor_name: contractor?.company_name || contractor?.contractor_name,
+          amount_sanctioned: budgetAmount !== '' ? Number(budgetAmount) : undefined,
+          status: 'In Progress'
+        })
       });
+
+      // push to local storage so BudgetPage picks it up
+      if (budgetAmount !== '') {
+        try {
+          const raw = localStorage.getItem('wg_budget_allocations');
+          const allocs = raw ? JSON.parse(raw) : [];
+          allocs.push({
+            allocation_id: `local-${Date.now()}`,
+            issueId: issueId,
+            issueTitle: `Report #${issueId}`,
+            city: contractor?.city || 'Unknown',
+            country: contractor?.country || 'Unknown',
+            amount: Number(budgetAmount),
+            currency: 'INR'
+          });
+          localStorage.setItem('wg_budget_allocations', JSON.stringify(allocs));
+        } catch (e) {
+          console.warn('Failed to save budget allocation to local storage', e);
+        }
+      }
 
       onAssigned && onAssigned(contractor);
       onClose();
@@ -74,6 +101,17 @@ export default function ContractorAssignModal({ open, issueId, onClose, onAssign
               </label>
             ))
           )}
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-bold text-gray-700 mb-1">Sanctioned Budget (INR)</label>
+          <input
+            type="number"
+            value={budgetAmount}
+            onChange={(e) => setBudgetAmount(e.target.value === '' ? '' : Number(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+            placeholder="e.g. 50000"
+          />
         </div>
 
         <div className="flex justify-end gap-3">

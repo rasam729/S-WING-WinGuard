@@ -241,7 +241,7 @@ router.put('/reports/:id/status', async (req: Request, res: Response) => {
 router.patch('/reports/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { status, amount_sanctioned, amount_spent } = req.body;
+    const { status, amount_sanctioned, amount_spent, contractor_id, contractor_name } = req.body;
     
     const updates: string[] = [];
     const params: any[] = [];
@@ -262,6 +262,18 @@ router.patch('/reports/:id', async (req: Request, res: Response) => {
     if (amount_spent !== undefined) {
       updates.push(`amount_spent = $${paramCount}`);
       params.push(amount_spent);
+      paramCount++;
+    }
+    
+    if (contractor_id !== undefined) {
+      updates.push(`contractor_id = $${paramCount}`);
+      params.push(contractor_id);
+      paramCount++;
+    }
+    
+    if (contractor_name !== undefined) {
+      updates.push(`contractor_name = $${paramCount}`);
+      params.push(contractor_name);
       paramCount++;
     }
     
@@ -295,6 +307,14 @@ router.patch('/reports/:id', async (req: Request, res: Response) => {
         status,
         message: 'Report status updated'
       });
+      
+      if (contractor_name || (amount_sanctioned !== undefined && amount_sanctioned > 0)) {
+        io.emit('new-notification', {
+          type: 'success',
+          report_id: id,
+          message: `Your report has been verified! Assigned to contractor ${contractor_name || 'in progress'} with allocated budget.`
+        });
+      }
     }
     
     res.json({
