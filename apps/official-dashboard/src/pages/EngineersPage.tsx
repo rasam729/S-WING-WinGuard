@@ -38,10 +38,6 @@ export default function EngineersPage() {
   const [selectedEngineer, setSelectedEngineer] = useState<Engineer | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
 
-  useEffect(() => {
-    fetchEngineers();
-  }, []);
-
   const fetchEngineers = async () => {
     try {
       setLoading(true);
@@ -61,6 +57,10 @@ export default function EngineersPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchEngineers();
+  }, []);
 
   const fetchEngineerDetails = async (engineerId: string) => {
     try {

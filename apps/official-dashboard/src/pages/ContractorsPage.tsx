@@ -100,12 +100,14 @@ export default function ContractorsPage() {
     ...(dynamicAssignments[String(contractor.contractor_id)] || {})
   }));
 
-  const filteredContractors = augmentedContractors.filter(contractor =>
-    contractor.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contractor.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contractor.assigned_issue?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contractor.route_info?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredContractors = augmentedContractors.filter(contractor => {
+    const search = searchTerm.toLowerCase();
+    const company = (contractor.company_name || contractor.contractor_name || '').toLowerCase();
+    const contact = (contractor.contact_person || '').toLowerCase();
+    const issue = (contractor.assigned_issue || '').toLowerCase();
+    const route = (contractor.route_info || '').toLowerCase();
+    return company.includes(search) || contact.includes(search) || issue.includes(search) || route.includes(search);
+  });
 
   const handleLogout = () => {
     logout();
