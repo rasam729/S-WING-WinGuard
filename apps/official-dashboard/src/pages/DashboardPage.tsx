@@ -79,7 +79,7 @@ export default function DashboardPage() {
   
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [simulationMode, setSimulationMode] = useState<'install' | null>(null);
-  const [installType, setInstallType] = useState<'streetlight' | 'police_booth' | null>(null);
+  const [installType, setInstallType] = useState<'streetlight' | 'police_booth' | 'hospital' | null>(null);
   const [clickedLocation, setClickedLocation] = useState<[number, number] | null>(null);
   const [citizenReports, setCitizenReports] = useState<CitizenReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
@@ -94,11 +94,14 @@ export default function DashboardPage() {
   const [pickedPlaceName, setPickedPlaceName] = useState<string>('');
   const mapRef = useRef<any>(null);
 
+<<<<<<< Updated upstream
   // Allocation modal state
   const [allocModalOpen, setAllocModalOpen] = useState(false);
   const [allocDefaults, setAllocDefaults] = useState<{ amount: number; currency: string; title?: string; timeline?: string }>({ amount: 0, currency: 'USD', title: '', timeline: '' });
   const [pendingAction, setPendingAction] = useState<any>(null);
 
+=======
+>>>>>>> Stashed changes
   // Real-time alerts and Notification Drawer state
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotificationDrawer, setShowNotificationDrawer] = useState(false);
@@ -356,6 +359,7 @@ export default function DashboardPage() {
     navigate('/login');
   };
 
+<<<<<<< Updated upstream
   const handleStatusChange = async (issueId: string | number, newStatus: 'in_progress' | 'resolved') => {
     const numericId = typeof issueId === 'number' ? issueId : Number(issueId);
     const issue = issues.find(i => i.id === issueId || i.id === numericId);
@@ -444,12 +448,51 @@ export default function DashboardPage() {
     } finally {
       setPendingAction(null);
       setAllocModalOpen(false);
+=======
+  const handleStatusChange = async (issueId: number, newStatus: 'in_progress' | 'resolved') => {
+    const issue = issues.find(i => i.id === issueId);
+    void issue;
+    
+    updateIssueStatus(issueId, newStatus);
+
+    // Update status in database via API
+    try {
+      const statusText = newStatus === 'resolved' ? 'Resolved' : 'In Progress';
+      
+      // Determine the actual report ID (citizen reports have ID > 10000)
+      const reportId = issueId > 10000 ? issueId - 10000 : issueId;
+      
+      const response = await fetch(`http://localhost:3000/api/reports/${reportId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: statusText
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Show success message
+        if (newStatus === 'resolved') {
+          alert(`✅ Issue marked as resolved! The citizen has been notified and the issue will be removed from their map.`);
+        } else {
+          alert(`✅ Issue status updated to "In Progress". The citizen has been notified.`);
+        }
+      } else {
+        alert('❌ Failed to update status. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('❌ Error updating status. Please try again.');
+>>>>>>> Stashed changes
     }
   };
 
   const confirmInstallation = async () => {
     if (clickedLocation && installType) {
       try {
+<<<<<<< Updated upstream
         // Show simulated budget estimate for this installation
         try {
           const defaultEst = 15000; // fallback estimate
@@ -469,6 +512,8 @@ export default function DashboardPage() {
         } catch (e) {
           console.warn('Simulated budget preview failed', e);
         }
+=======
+>>>>>>> Stashed changes
         // Save infrastructure to database
         const response = await fetch('http://localhost:3000/api/infrastructure', {
           method: 'POST',
@@ -492,7 +537,11 @@ export default function DashboardPage() {
             latitude: clickedLocation[0],
             longitude: clickedLocation[1],
             status: 'resolved',
+<<<<<<< Updated upstream
             description: `New ${installType === 'streetlight' ? 'streetlight' : 'police booth'} installed`,
+=======
+            description: `New ${installType === 'streetlight' ? 'streetlight' : installType === 'police_booth' ? 'police booth' : 'hospital'} installed`,
+>>>>>>> Stashed changes
             reportedAt: 'Just now',
             severity: 0
           };
@@ -504,12 +553,20 @@ export default function DashboardPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               user_id: 1,
+<<<<<<< Updated upstream
               message: `New ${installType === 'streetlight' ? 'streetlight' : 'police booth'} installed in your area`,
+=======
+              message: `New ${installType === 'streetlight' ? 'streetlight' : installType === 'police_booth' ? 'police booth' : 'hospital'} installed in your area`,
+>>>>>>> Stashed changes
               type: 'success'
             })
           });
 
+<<<<<<< Updated upstream
           alert(`✅ ${installType === 'streetlight' ? 'Streetlight' : 'Police Booth'} installed successfully!`);
+=======
+          alert(`✅ ${installType === 'streetlight' ? 'Streetlight' : installType === 'police_booth' ? 'Police Booth' : 'Hospital'} installed successfully!`);
+>>>>>>> Stashed changes
         } else {
           alert('❌ Failed to install infrastructure. Please try again.');
         }
@@ -524,7 +581,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleInstallNew = (type: 'streetlight' | 'police_booth') => {
+  const handleInstallNew = (type: 'streetlight' | 'police_booth' | 'hospital') => {
     setSimulationMode('install');
     setInstallType(type);
     setClickedLocation(null);
@@ -975,7 +1032,10 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900">Digital Twin Command Center</h3>
+<<<<<<< Updated upstream
                   <p className="text-sm text-gray-500 mt-2 max-w-2xl">Real-time global road issue monitoring with live geo-aware alerts, contractor routing, and incident tracking across cities and countries.</p>
+=======
+>>>>>>> Stashed changes
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {/* Installation Mode Buttons */}
@@ -1004,6 +1064,19 @@ export default function DashboardPage() {
                       <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
                     </svg>
                     Install Police Booth
+                  </button>
+                  <button 
+                    onClick={() => handleInstallNew('hospital')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border-2 transition-all ${
+                      simulationMode === 'install' && installType === 'hospital'
+                        ? 'bg-pink-600 text-white border-pink-600 shadow-lg'
+                        : 'bg-white text-pink-700 border-pink-300 hover:border-pink-600'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/>
+                    </svg>
+                    Install Hospital
                   </button>
                   <button 
                     onClick={toggleCoordinatePicker}
@@ -1048,9 +1121,59 @@ export default function DashboardPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleGlobalSearch()}
+<<<<<<< Updated upstream
                     placeholder="Search anywhere globally (e.g., Mumbai, London, New York, Tokyo)"
                     className="w-full pl-10 pr-24 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
                   />
+=======
+                    placeholder="Search for any place in the world (e.g., Mumbai, Delhi, Connaught Place)"
+                    className="w-full pl-10 pr-24 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm"
+                  />
+                  <button
+                    onClick={handleGlobalSearch}
+                    disabled={isSearching || !searchQuery.trim()}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-1.5 bg-blue-600 text-white rounded-md text-sm font-bold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSearching ? 'Searching...' : 'Search'}
+                  </button>
+                </div>
+                
+                {/* Search Results Dropdown */}
+                {searchResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+                    {searchResults.map((result, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSelectSearchResult(result)}
+                        className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition"
+                      >
+                        <p className="font-semibold text-gray-900 text-sm">{result.display_name}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          📍 Lat: {parseFloat(result.lat).toFixed(4)}, Lng: {parseFloat(result.lon).toFixed(4)}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Search Bar */}
+              <div className="relative">
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                      placeholder="Search for any place in India (e.g., Mumbai, Delhi, Connaught Place)..."
+                      className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-300 focus:border-teal-600 focus:outline-none text-sm"
+                    />
+                    <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                  </div>
+>>>>>>> Stashed changes
                   <button
                     onClick={handleGlobalSearch}
                     disabled={isSearching || !searchQuery.trim()}

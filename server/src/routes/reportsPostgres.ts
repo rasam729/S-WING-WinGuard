@@ -14,6 +14,7 @@ export function setReportsSocketIO(ioInstance: SocketIOServer) {
   io = ioInstance;
 }
 
+<<<<<<< Updated upstream
 function inferRoadType(category: string, severity: number, description = '') {
   const text = `${category || ''} ${description || ''}`.toLowerCase();
   if (/highway|motorway|autobahn|i-|expressway|nh\b/.test(text) || severity >= 9) return 'NH';
@@ -21,6 +22,8 @@ function inferRoadType(category: string, severity: number, description = '') {
   return 'MDR';
 }
 
+=======
+>>>>>>> Stashed changes
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -160,8 +163,12 @@ router.post('/', authenticate, upload.single('photo'), async (req: any, res: Res
           latitude: parseFloat(latitude),
           longitude: parseFloat(longitude),
           created_at: report.created_at,
+<<<<<<< Updated upstream
           status: 'Report Received',
           road_type
+=======
+          status: 'Report Received'
+>>>>>>> Stashed changes
         });
 
         // Broadcast new notification to updating clients
