@@ -73,5 +73,18 @@ export default defineConfig({
       '/api': { target: 'http://localhost:3000', changeOrigin: true },
       '/uploads': { target: 'http://localhost:3000', changeOrigin: true }
     }
+  },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-map': ['leaflet', 'react-leaflet'],
+          'vendor-charts': ['chart.js', 'react-chartjs-2', 'recharts'],
+          'vendor-socket': ['socket.io-client'],
+        }
+      }
+    }
   }
 });

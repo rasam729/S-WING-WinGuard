@@ -1,176 +1,219 @@
-# WinGuard - Global Road Safety & Infrastructure Monitoring Platform
+<div align="center">
 
-WinGuard is a comprehensive **road safety and infrastructure management system** designed for city officials and citizens. It enables real-time reporting, tracking, and resolution of road issues (potholes, broken streetlights, etc.) across the globe, with budget allocation, contractor management, and advanced analytics.
+<img src="./WinGuard_Logo.png" alt="WinGuard Logo" width="180"/>
 
-**🚀 [Quick Start Guide](./QUICKSTART.md)** — Get running in 5 minutes
+# 🛡️ WinGuard
+### *Global Road Safety & Infrastructure Monitoring Platform*
 
-## � Key Features
+> **Empowering citizens. Enabling officials. Fixing cities — in real time.**
 
-### **Official Dashboard** (Web)
-- **Digital Twin Command Center**: Interactive global map for real-time road issue monitoring
-- **Smart Issue Management**: Create, track, and resolve road issues with status updates (Critical → In Progress → Resolved)
-- **Budget Allocation & Tracking**: Simulated budget suggestions + custom allocation by city officials
-- **Infrastructure Installation**: Place streetlights and police booths on the map with budget simulation
-- **Multi-Currency Support**: Manage budgets across 12+ global currencies (USD, INR, EUR, GBP, JPY, AUD, BRL, AED, ZAR, CAD, SGD, CNY)
-- **Advanced Analytics**: 
-  - Road type breakdown (NH, SH, MDR)
-  - Contractor performance tracking
-  - Resolution efficiency metrics
-- **Real-time Notifications**: Browser notifications and in-app alerts for issue updates
-- **Global Search**: Search for cities/locations anywhere in the world
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-PostGIS-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://postgresql.org/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-WebSocket-010101?style=for-the-badge&logo=socket.io)](https://socket.io/)
+[![Vite](https://img.shields.io/badge/Vite-PWA-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 
-### **Citizen Mobile App** (Mobile-responsive)
-- **Issue Reporting**: Report potholes, broken streetlights, drainage issues with photo uploads
-- **Real-time Map View**: See all reported issues on interactive map
-- **Status Color Coding**: 
-  - 🔴 Red = Critical (immediate action needed)
-  - 🔵 Blue = In Progress (being fixed)
-  - 🟢 Green = Resolved
-- **Safe Route Navigation**: AI-powered route calculator that avoids high-risk areas
-- **Contractor Information**: View assigned contractors for each issue
-- **Road Type Display**: See NH/SH/MDR classification for reported issues
-- **PWA Support**: Works offline with service worker caching
-- **Browser Notifications**: Real-time alerts when reports are resolved
+</div>
 
 ---
 
-## 🏗️ Tech Stack
+## 🌍 The Problem
 
-### **Frontend**
-- **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **State Management**: Zustand
-- **Maps**: React-Leaflet (OpenStreetMap/Leaflet)
-- **Charts**: Chart.js + React-ChartJS-2
-- **PWA**: Vite PWA Plugin (service worker + caching)
-- **Styling**: Tailwind CSS
+Every year, **millions of road-related accidents** occur due to unaddressed potholes, broken streetlights, and deteriorating infrastructure. Citizens have no efficient way to report issues, officials lack real-time visibility, and the resolution cycle is slow and opaque.
 
-### **Backend**
-- **Runtime**: Node.js
-- **Framework**: Express.js + TypeScript
-- **Database**: PostgreSQL + PostGIS (geospatial)
-- **Authentication**: JWT (Bearer tokens)
-- **Real-time**: Socket.io (WebSocket)
-- **Port**: 3000
+**WinGuard** closes this loop.
 
-### **Project Structure**
+---
+
+## 💡 What We Built
+
+WinGuard is a **full-stack, production-ready urban safety platform** that connects citizens directly with city officials through:
+
+- 📱 **A citizen mobile PWA** — report issues with photo + GPS in seconds
+- 🖥️ **An official command dashboard** — manage, prioritize, and resolve issues on a live digital twin map
+- ⚡ **Real-time WebSocket sync** — both apps update live, no refresh needed
+- 💰 **Budget allocation engine** — officials allocate funds across 12+ global currencies
+
+---
+
+## ✨ Key Features
+
+### 🏛️ Official Dashboard
+| Feature | Description |
+|---|---|
+| 🗺️ Digital Twin Map | Live global infrastructure map via Leaflet + OpenStreetMap |
+| 📊 Analytics Dashboard | Resolution rates, contractor performance, road-type breakdown |
+| 🔧 Issue Management | Create/track/resolve issues (Critical → In Progress → Resolved) |
+| 💰 Budget Allocation | Multi-currency budget simulation & fund tracking |
+| 🏗️ Infrastructure Install | Place streetlights & police booths directly on the map |
+| 🔔 Real-time Alerts | WebSocket-powered in-app & browser notifications |
+| 🌍 Global Search | Search and jump to any city in the world |
+
+### 📱 Citizen Mobile App (PWA)
+| Feature | Description |
+|---|---|
+| 📸 Issue Reporting | Photo + GPS auto-detected location, submitted in one tap |
+| 🗺️ Live Map View | See all issues near you — color-coded by severity |
+| 🛣️ Safe Route Planner | AI-powered routing that avoids high-risk road zones |
+| 🔔 Push Notifications | Notified when your report gets resolved |
+| 📴 Offline Support | Service worker caching for offline use |
+| 📱 PWA Installable | Works like a native app on Android/iOS |
+
+---
+
+## 🏗️ Architecture
+
 ```
-WinGuard/
+WinGuard (Monorepo — npm workspaces)
 ├── apps/
-│   ├── official-dashboard/      # City official dashboard
+│   ├── citizen-app/          # React 18 + Vite PWA (Mobile)
 │   │   └── src/
-│   │       ├── pages/           # Dashboard, Issues, Analytics, Budget, Stats
-│   │       ├── components/      # AllocationModal, UI components
-│   │       ├── store/           # Zustand (issues, auth)
-│   │       └── data/            # globalData.ts (currencies, global issues)
-│   └── citizen-app/             # Citizen mobile app (PWA)
+│   │       ├── pages/        # MapPage, ReportPage, SafeRoute
+│   │       ├── components/   # Chatbot, NavigationEngine, Notifications
+│   │       └── store/        # Zustand state (issues, auth)
+│   └── official-dashboard/   # React 18 + Vite (Desktop)
 │       └── src/
-│           ├── pages/           # MapPage, ReportPage
-│           ├── components/      # Chatbot, NavigationEngine
-│           └── store/           # Zustand (issues)
-├── server/                      # Express backend
-├── shared/                      # Shared types, constants
-└── package.json                 # Monorepo with npm workspaces
+│           ├── pages/        # Dashboard, Issues, Analytics, Budget, Stats
+│           ├── components/   # AllocationModal, InfrastructurePanel, Charts
+│           └── store/        # Zustand state (issues, auth, budget)
+├── server/                   # Node.js + Express + TypeScript
+│   └── src/
+│       ├── routes/           # issues, reports, budget, notifications, infra
+│       ├── middleware/        # JWT auth, role-based access control
+│       └── db/               # PostgreSQL + PostGIS queries
+├── shared/                   # Shared types, constants, utilities
+├── database/
+│   └── sql/                  # All schema + seed SQL files
+├── scripts/                  # Setup, test, and utility scripts
+├── docker-compose.yml        # One-command Docker setup
+└── .env.example              # Environment variable template
 ```
-
----
-
-## 📊 Global Data Coverage
-
-### **12+ Countries** (50+ Sample Issues Pre-loaded)
-- 🇮🇳 **India**: Bangalore, Mumbai, Delhi
-- 🇺🇸 **USA**: New York, Los Angeles, Chicago
-- 🇬🇧 **UK**: London
-- 🇩🇪 **Germany**: Berlin, Frankfurt
-- 🇯🇵 **Japan**: Tokyo
-- 🇦🇺 **Australia**: Sydney
-- 🇧🇷 **Brazil**: São Paulo
-- 🇦🇪 **UAE**: Dubai
-- 🇿🇦 **South Africa**: Johannesburg
-- 🇨🇦 **Canada**: Toronto
-- 🇸🇬 **Singapore**: Singapore
-- 🇨🇳 **China**: Beijing
-
-### **Road Types Tracked**
-- **NH** (National Highway), **SH** (State Highway), **MDR** (Major District Road)
-- **Arterial**, **Motorway/Highway**, **Local** roads
-
-### **12+ Currencies Supported**
-- 🇺🇸 USD, 🇮🇳 INR, 🇬🇧 GBP, 🇪🇺 EUR, 🇯🇵 JPY, 🇦🇺 AUD, 🇧🇷 BRL, 🇦🇪 AED, 🇿🇦 ZAR, 🇨🇦 CAD, 🇸🇬 SGD, 🇨🇳 CNY
 
 ---
 
 ## 🚀 Quick Start
 
-### **5-Minute Setup**
+### Prerequisites
+- **Node.js** ≥ 20 and **npm** ≥ 10
+- A **PostgreSQL** database (we use [Neon Cloud](https://neon.tech) — free tier works great)
+
+### 1. Clone & Install
+
 ```bash
-cd Road_Safety/WinGuard
+git clone https://github.com/rasam729/S-WING-WinGuard.git
+cd S-WING-WinGuard
 npm install
+```
+
+### 2. Configure Environment
+
+```bash
+cp .env.example .env
+# Fill in your PostgreSQL connection URL and JWT secret in .env
+```
+
+Required `.env` variables:
+```env
+DATABASE_URL=postgresql://user:password@host/dbname
+JWT_SECRET=your_super_secret_key
+PORT=3000
+```
+
+### 3. Initialize Database
+
+```bash
+# Run the schema setup (using Neon or any PostgreSQL instance)
+psql $DATABASE_URL < database/sql/init-cloud-db.sql
+psql $DATABASE_URL < database/sql/global-sample-data.sql
+```
+
+### 4. Start Everything
+
+```bash
 npm run dev
 ```
 
-**Access:**
-- Dashboard: http://localhost:5178 (desktop)
-- Citizen App: http://localhost:5179 (mobile/PWA)
-- API: http://localhost:3000
+This starts all three services concurrently:
 
-**Login:**
-```
-Email: admin@winguard.com
-Password: admin123
-```
-
-See [QUICKSTART.md](./QUICKSTART.md) for detailed setup including mobile access and troubleshooting.
+| Service | URL | Description |
+|---|---|---|
+| 🖥️ Official Dashboard | http://localhost:5174 | City official interface |
+| 📱 Citizen App | http://localhost:5173 | Mobile PWA |
+| ⚙️ Backend API | http://localhost:3000 | REST + WebSocket |
 
 ---
 
-## 💰 Budget Features
+## 🔐 Demo Credentials
 
-- **Simulated Budget**: Automatically calculated based on issue type and location
-- **Custom Allocation**: Officials override amount, select currency, set timeline
-- **Multi-Currency**: Support for 12+ currencies with live rate conversion
-- **Tracking**: View allocations by city, country, contractor, and issue type
-- **Offline Support**: Budget allocations persist in localStorage
-
----
-
-## 📱 Multi-Device Support
-
-- **Desktop**: Full dashboard with side nav, analytics, budget pages
-- **Tablet**: Responsive layout with touch-friendly controls
-- **Mobile PWA**: Full-screen map, bottom nav, offline support, camera access
+| Role | Email | Password |
+|---|---|---|
+| 👨‍💼 City Official | `admin@winguard.com` | `admin123` |
+| 👤 Citizen | `citizen@winguard.com` | `citizen123` |
 
 ---
 
-## 🔒 Authentication
-
-**Dev Credentials:**
-```
-Email:    admin@winguard.com
-Password: admin123
-```
-
-JWT tokens stored in localStorage, auto-attached to API requests.
-
----
-
-## 📡 API Endpoints
-
-- `GET /api/issues` - Fetch all issues
-- `POST /api/reports` - Submit citizen report
-- `PATCH /api/reports/:id/resolve` - Resolve report
-- `POST /api/budget/allocate` - Create budget allocation
-- `GET /api/notifications` - Fetch notifications
-- `POST /api/infrastructure` - Install infrastructure
-
----
-
-## 🔧 Development
+## 🐳 Docker (Alternative)
 
 ```bash
-npm run dev              # Start all dev servers
-npm run build            # Build for production
-npm run test             # Run tests (if configured)
+# Start with Docker Compose
+docker-compose up -d
+```
+
+---
+
+## 🌐 Global Coverage
+
+WinGuard ships with **50+ pre-seeded sample issues** across 12+ countries:
+
+🇮🇳 India &nbsp;|&nbsp; 🇺🇸 USA &nbsp;|&nbsp; 🇬🇧 UK &nbsp;|&nbsp; 🇩🇪 Germany &nbsp;|&nbsp; 🇯🇵 Japan &nbsp;|&nbsp; 🇦🇺 Australia &nbsp;|&nbsp; 🇧🇷 Brazil &nbsp;|&nbsp; 🇦🇪 UAE &nbsp;|&nbsp; 🇿🇦 South Africa &nbsp;|&nbsp; 🇨🇦 Canada &nbsp;|&nbsp; 🇸🇬 Singapore &nbsp;|&nbsp; 🇨🇳 China
+
+### 12+ Currencies Supported
+`USD` `INR` `GBP` `EUR` `JPY` `AUD` `BRL` `AED` `ZAR` `CAD` `SGD` `CNY`
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS |
+| **State** | Zustand |
+| **Maps** | Leaflet.js + OpenStreetMap |
+| **Charts** | Chart.js + React-ChartJS-2 |
+| **PWA** | Vite PWA Plugin (Service Worker) |
+| **Backend** | Node.js, Express.js, TypeScript |
+| **Database** | PostgreSQL + PostGIS (Neon Cloud) |
+| **Auth** | JWT (role-based: citizen / official) |
+| **Real-time** | Socket.io WebSocket |
+| **Routing** | OpenRouteService API |
+| **DevOps** | Docker, docker-compose |
+
+---
+
+## 📡 API Reference
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/issues` | Fetch all road issues |
+| `POST` | `/api/reports` | Submit a citizen report |
+| `PATCH` | `/api/reports/:id/resolve` | Resolve a report |
+| `POST` | `/api/budget/allocate` | Allocate budget to an issue |
+| `GET` | `/api/notifications` | Fetch user notifications |
+| `POST` | `/api/infrastructure` | Install infrastructure on map |
+| `GET` | `/api/analytics` | Dashboard analytics data |
+
+---
+
+## 🔧 Development Scripts
+
+```bash
+npm run dev              # Start all 3 dev servers concurrently
+npm run dev:server       # Start backend only
+npm run dev:citizen      # Start citizen app only
+npm run dev:official     # Start official dashboard only
+npm run build            # Production build (all workspaces)
+npm run lint             # Lint all workspaces
 ```
 
 ---
@@ -178,15 +221,23 @@ npm run test             # Run tests (if configured)
 ## 🐛 Troubleshooting
 
 | Issue | Solution |
-|-------|----------|
-| Port 3000 in use | `taskkill /PID <pid> /F` (Windows) or `lsof -ti :3000 \| xargs kill -9` (Mac/Linux) |
-| Mobile won't connect | Ensure mobile on same WiFi, use machine IPv4 (not localhost) |
-| Map tiles not loading | Check internet, OpenStreetMap CDN accessible |
-| PWA not caching | Clear Service Worker in DevTools → Application |
-| Login fails | Clear localStorage, check backend running |
-
-See [QUICKSTART.md](./QUICKSTART.md) for more help.
+|---|---|
+| Port already in use | Kill the process: `npx kill-port 3000 5178 5179` |
+| Mobile can't connect | Use your machine's IPv4 (not `localhost`) — same WiFi required |
+| Map tiles not loading | Check internet connection; OpenStreetMap CDN must be accessible |
+| Login fails | Check `.env` has correct `JWT_SECRET`; clear `localStorage` |
+| DB connection error | Verify `DATABASE_URL` in `.env`; check Neon dashboard for wake-up delay |
 
 ---
 
-**Built with ❤️ for safer roads globally** 🌍🛣️✨
+## 👥 Team
+
+Built with ❤️ by **Team S-WING** for safer roads worldwide 🌍🛣️
+
+---
+
+<div align="center">
+
+**⭐ Star this repo if WinGuard made you feel safer! ⭐**
+
+</div>

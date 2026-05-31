@@ -82,11 +82,11 @@ export function calculateInfrastructureCost(
 
   if (includeRecurring) {
     if (type === 'streetlight') {
-      monthlyRecurring = costs.electricity * quantity;
+      monthlyRecurring = (costs as typeof INFRASTRUCTURE_COSTS.streetlight).electricity * quantity;
     } else if (type === 'police_booth') {
-      monthlyRecurring = costs.staffing * quantity;
+      monthlyRecurring = (costs as typeof INFRASTRUCTURE_COSTS.police_booth).staffing * quantity;
     } else if (type === 'cctv') {
-      monthlyRecurring = costs.monitoring * quantity;
+      monthlyRecurring = (costs as typeof INFRASTRUCTURE_COSTS.cctv).monitoring * quantity;
     }
     yearlyRecurring = monthlyRecurring * 12;
   }

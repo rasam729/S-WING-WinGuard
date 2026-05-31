@@ -8,7 +8,7 @@ import { authenticate } from '../middleware/auth';
 import Infrastructure from '../models/Infrastructure';
 import SafetyIssue from '../models/SafetyIssue';
 import { HTTP_STATUS } from '@shared/constants';
-import pool from '../config/database';
+import { pool } from '../config/postgres';
 import { Server as SocketIOServer } from 'socket.io';
 
 const router = Router();

@@ -68,5 +68,19 @@ export default defineConfig({
       '/uploads': { target: 'http://localhost:3000', changeOrigin: true }
     }
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-map': ['leaflet', 'react-leaflet'],
+          'vendor-charts': ['chart.js', 'react-chartjs-2', 'recharts'],
+          'vendor-socket': ['socket.io-client'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-select', '@radix-ui/react-tabs', 'lucide-react'],
+        }
+      }
+    }
+  },
   assetsInclude: ['**/*.svg', '**/*.png', '**/*.jpg', '**/*.jpeg']
 });

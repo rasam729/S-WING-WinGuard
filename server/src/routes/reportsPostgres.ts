@@ -19,6 +19,7 @@ function inferRoadType(category: string, severity: number, description = '') {
   if (/highway|motorway|autobahn|i-|expressway|nh\b/.test(text) || severity >= 9) return 'NH';
   if (/state|state highway|sh\b/.test(text) || severity >= 6) return 'SH';
   return 'MDR';
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -159,9 +160,10 @@ router.post('/', authenticate, upload.single('photo'), async (req: any, res: Res
           latitude: parseFloat(latitude),
           longitude: parseFloat(longitude),
           created_at: report.created_at,
-            status: 'Report Received',
-            road_type
-          });
+          status: 'Report Received',
+          road_type
+        });
+      }
     } catch (notifErr) {
       console.error('Error creating official notification:', notifErr);
     }
