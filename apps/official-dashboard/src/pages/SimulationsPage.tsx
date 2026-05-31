@@ -28,10 +28,6 @@ const WORLD_CENTERS: Record<string, { center: [number, number]; zoom: number; la
   china:     { center: [39.9042, 116.4074],  zoom: 11, label: '🇨🇳 Beijing, China' },
   uae:       { center: [25.2048, 55.2708],   zoom: 11, label: '🇦🇪 Dubai, UAE' },
 };
-<<<<<<< Updated upstream
-=======
-// const DEFAULT_ZOOM = 11;
->>>>>>> Stashed changes
 
 // ── Marker Icons ─────────────────────────────────────────────────────────────
 const makeIcon = (emoji: string, bg: string) => L.divIcon({

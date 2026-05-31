@@ -54,51 +54,11 @@ export default function IssuesPage() {
   const handleToggleResolved = async (issueId: string | number, currentStatus: 'critical' | 'in_progress' | 'resolved') => {
     setUpdatingId(issueId);
     try {
-<<<<<<< Updated upstream
       // If already resolved, unresolve locally
       if (currentStatus === 'resolved') {
         updateIssueStatus(issueId, 'critical');
         setUpdatingId(null);
         return;
-=======
-      const token = useAuthStore.getState().token;
-      
-      if (currentStatus === 'resolved') {
-        // Unresolve - just update local state
-        updateIssueStatus(issueId, 'critical');
-      } else {
-        // Resolve - call backend API
-        const response = await fetch(`http://localhost:3000/api/reports/${issueId}/resolve`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          updateIssueStatus(issueId, 'resolved');
-          
-          // Show success notification
-          alert('✅ Report marked as resolved!\n\n' +
-                '📢 Citizen has been notified via:\n' +
-                '• Browser notification\n' +
-                '• In-app alert\n' +
-                '• Stats page update\n\n' +
-                'The report will disappear from the map.');
-          
-          // Emit WebSocket event (if socket is available)
-          if (window.socket) {
-            window.socket.emit('report-resolved', {
-              reportId: issueId,
-              category: data.data?.category || 'Report',
-              userId: data.data?.user_id
-            });
-          }
-        } else {
-          throw new Error('Failed to resolve report');
-        }
->>>>>>> Stashed changes
       }
 
       // Before resolving, show simulated budget and allow custom allocation

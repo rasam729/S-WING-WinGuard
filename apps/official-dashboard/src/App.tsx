@@ -7,10 +7,6 @@ import StatsPage from './pages/StatsPage';
 import ReportsPage from './pages/ReportsPage';
 import IssuesPage from './pages/IssuesPage';
 import SimulationsPage from './pages/SimulationsPage';
-<<<<<<< Updated upstream
-=======
-// import SafetyScoreDashboardEnhanced from './components/SafetyScoreDashboardEnhanced';
->>>>>>> Stashed changes
 import AnalyticsPage from './pages/AnalyticsPage';
 import BudgetPage from './pages/BudgetPage';
 import ContractorsPage from './pages/ContractorsPage';
