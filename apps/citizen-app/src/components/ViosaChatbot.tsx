@@ -24,7 +24,7 @@ const ViosaChatbot: React.FC<ViosaChatbotProps> = ({ isOpen, onClose, userLocati
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi! I'm Viosa, your AI safety assistant for Bengaluru. I have access to real-time data on road hazards, safety statistics, and can help you find the safest routes. How can I help you today?",
+      text: "Hi! I'm Viosa, your global AI safety assistant for WinGuard. I have access to real-time data on road hazards, safety statistics, and can help you find the safest routes. How can I help you today?",
       sender: 'viosa',
       timestamp: new Date(),
       suggestions: [
@@ -50,12 +50,12 @@ const ViosaChatbot: React.FC<ViosaChatbotProps> = ({ isOpen, onClose, userLocati
 
   const generateAIResponse = async (userMessage: string): Promise<{ text: string; routes?: RouteOption[] }> => {
     const lowerMessage = userMessage.toLowerCase();
-    const stats = getIssueStats();
+    const stats = await getIssueStats();
 
     // How to submit report/complaint
     if ((lowerMessage.includes('how') || lowerMessage.includes('submit')) && (lowerMessage.includes('report') || lowerMessage.includes('complaint') || lowerMessage.includes('issue'))) {
       return {
-        text: VIOSA_KNOWLEDGE.SUBMIT_REPORT + `\n\nCurrent active issues in Bengaluru: ${stats.total}\nYour report helps make the city safer! 🛡️`
+        text: VIOSA_KNOWLEDGE.SUBMIT_REPORT + `\n\nCurrent active issues in your area: ${stats.total}\nYour report helps make the city safer! 🛡️`
       };
     }
 
@@ -66,7 +66,7 @@ const ViosaChatbot: React.FC<ViosaChatbotProps> = ({ isOpen, onClose, userLocati
         const destLat = parseFloat(coordMatch[1]);
         const destLng = parseFloat(coordMatch[2]);
         
-        const routes = generateRouteOptions(
+        const routes = await generateRouteOptions(
           { lat: userLocation[0], lng: userLocation[1] },
           { lat: destLat, lng: destLng }
         );
@@ -148,7 +148,7 @@ ${!userLocation ? '\n📍 **Enable location first** by clicking the blue "My Loc
         const destLat = parseFloat(coordMatch[1]);
         const destLng = parseFloat(coordMatch[2]);
         
-        const routes = generateRouteOptions(
+        const routes = await generateRouteOptions(
           { lat: userLocation[0], lng: userLocation[1] },
           { lat: destLat, lng: destLng }
         );
@@ -177,7 +177,7 @@ Click on any route below to view it on the map! The routes avoid ${stats.critica
 
 **Your Current Location:**
 📍 ${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}
-Area safety score: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
+Area safety score: ${Math.round(await calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
 
 **Provide Destination:**
 • **Coordinates**: "12.9716, 77.5946"
@@ -201,11 +201,11 @@ Type your destination or coordinates now!`
 
     // Statistics and dashboard data
     if (lowerMessage.includes('stat') || lowerMessage.includes('data') || lowerMessage.includes('dashboard') || lowerMessage.includes('report')) {
-      const nearbyIssues = userLocation ? getIssuesNearLocation({ lat: userLocation[0], lng: userLocation[1] }, 5) : [];
+      const nearbyIssues = userLocation ? await getIssuesNearLocation({ lat: userLocation[0], lng: userLocation[1] }, 5) : [];
       const activeNearby = nearbyIssues.filter(i => i.status !== 'resolved');
       
       return {
-        text: `📊 **Bengaluru Safety Dashboard**
+        text: `📊 **Safety Dashboard**
 
 **City-wide Statistics:**
 • Total Issues: ${stats.total}
@@ -221,7 +221,7 @@ Type your destination or coordinates now!`
 ${userLocation ? `**Your Area (5km radius):**
 • Total Issues: ${nearbyIssues.length}
 • Active Issues: ${activeNearby.length}
-• Safety Score: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
+• Safety Score: ${Math.round(await calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
 
 ${activeNearby.length > 0 ? `⚠️ Top concerns near you:
 ${activeNearby.slice(0, 3).map((issue, idx) => `${idx + 1}. ${issue.type.replace('_', ' ')} - ${issue.description}`).join('\n')}` : '✅ No active issues in your immediate area!'}` : ''}
@@ -245,9 +245,8 @@ Enable location to see hazards in your area! 📍`
         };
       }
 
-      const nearbyIssues = getIssuesNearLocation({ lat: userLocation[0], lng: userLocation[1] }, 2);
+      const nearbyIssues = await getIssuesNearLocation({ lat: userLocation[0], lng: userLocation[1] }, 2);
       const activeIssues = nearbyIssues.filter(i => i.status !== 'resolved');
-      const criticalIssues = activeIssues.filter(i => i.status === 'critical');
       
       if (activeIssues.length === 0) {
         return {
@@ -255,7 +254,7 @@ Enable location to see hazards in your area! 📍`
 
 **Your Area Status:**
 📍 Location: ${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}
-🛡️ Safety Score: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
+🛡️ Safety Score: ${Math.round(await calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
 ✅ Status: Safe for travel
 
 **How to Stay Updated:**
@@ -283,11 +282,7 @@ The roads are clear and safe for travel. Have a safe journey! 🚗
 
 **Summary:**
 📍 Your Location: ${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}
-🛡️ Area Safety: ${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
-• Total: ${activeIssues.length} active issues
-• Critical: ${criticalIssues.length} 🔴
-• In Progress: ${activeIssues.filter(i => i.status === 'in_progress').length} 🔵
-
+🛡️ Area Safety: ${Math.round(await calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100
 **Detailed Hazards:**
 ${activeIssues.slice(0, 5).map((issue, idx) => {
   const dist = Math.round(calculateDistance({ lat: userLocation[0], lng: userLocation[1] }, { lat: issue.latitude, lng: issue.longitude }) * 1000);
@@ -321,28 +316,28 @@ Would you like me to calculate a safe route for you?`
       const isNight = hour >= 20 || hour < 6;
       
       return {
-        text: `🛡️ **Safety Tips for Bengaluru** ${isNight ? '(Night Travel)' : ''}
+        text: `🛡️ **Safety Tips** ${isNight ? '(Night Travel)' : ''}
 
 ${isNight ? `**🌙 Night Safety:**
-• Stick to well-lit main roads (MG Road, Brigade Road, Indiranagar)
+• Stick to well-lit main roads
 • Avoid areas with broken streetlights (${stats.streetlights} reported)
-• Use verified cabs with live tracking
+• Use verified transport services
 • Share your location with family/friends` : `**☀️ Day Safety:**
 • Watch for potholes (${stats.potholes} active)
 • Stay alert in heavy traffic areas
 • Use designated pedestrian crossings`}
 
 **📱 Emergency Contacts:**
-• Police: 100
-• Ambulance: 108
-• Women Helpline: 1091
+• Contact your local police or emergency services
+• Share your coordinates or address
+• Stay on the line with the dispatcher
 
 **🗺️ Route Planning:**
 • Always use "Safe Route" mode
 • Check real-time hazard updates
 • Avoid ${stats.critical} critical hazard zones
 
-Current area safety: ${userLocation ? `${Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100` : 'Enable location to check'}
+Current area safety: ${userLocation ? `${Math.round(await calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1))}/100` : 'Enable location to check'}
 
 Need a safe route to your destination?`
       };
@@ -354,11 +349,9 @@ Need a safe route to your destination?`
         text: `🚨 **EMERGENCY ASSISTANCE**
 
 **Immediate Help:**
-📞 Police: **100**
-🚑 Ambulance: **108**
-🚒 Fire: **101**
-👩 Women Helpline: **1091**
-🏥 Bengaluru Police: **080-22943225**
+📞 Contact your local police or emergency services
+🚑 Share your coordinates or nearest landmark
+🚒 Stay calm and follow dispatcher instructions
 
 ${userLocation ? `**Your Location:**
 📍 ${userLocation[0].toFixed(6)}, ${userLocation[1].toFixed(6)}
@@ -375,7 +368,7 @@ Are you safe now? Do you need me to guide you to the nearest police station or h
     }
 
     // Default intelligent response
-    const safetyScore = userLocation ? Math.round(calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1)) : null;
+    const safetyScore = userLocation ? Math.round(await calculateSafetyScore({ lat: userLocation[0], lng: userLocation[1] }, 1)) : null;
     
     return {
       text: `I'm here to help with comprehensive safety information! 🛡️
@@ -388,7 +381,7 @@ Are you safe now? Do you need me to guide you to the nearest police station or h
 • Safety scores for each route
 
 📊 **Live Data Access**
-• ${stats.total} tracked issues across Bengaluru
+• ${stats.total} tracked issues across the network
 • ${stats.critical} critical hazards to avoid
 • Real-time status updates
 

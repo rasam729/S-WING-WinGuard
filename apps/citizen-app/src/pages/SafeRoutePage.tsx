@@ -95,7 +95,8 @@ function countHazardsAlongRoute(waypoints: [number, number][], hazards: Hazard[]
 
 function computeSafetyScore(hazardsOnRoute: number, totalHazards: number, routeType: 'safe' | 'balanced' | 'fast'): number {
   const base = routeType === 'safe' ? 88 : routeType === 'balanced' ? 72 : 55;
-  const penalty = Math.min(hazardsOnRoute * 8, 40);
+  const hazardRatio = totalHazards > 0 ? hazardsOnRoute / totalHazards : 0;
+  const penalty = Math.min(hazardsOnRoute * 8 + hazardRatio * 6, 40);
   return Math.max(20, Math.min(100, base - penalty));
 }
 

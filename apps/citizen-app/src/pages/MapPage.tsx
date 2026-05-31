@@ -21,7 +21,6 @@ L.Icon.Default.mergeOptions({
 const INDIA_CENTER: [number, number] = [20.5937, 78.9629];
 const INDIA_ZOOM = 5;
 const BENGALURU_CENTER: [number, number] = [12.9716, 77.5946];
-const DEFAULT_ZOOM = 13;
 
 interface Report {
   report_id: number;
@@ -162,13 +161,6 @@ const MapPage: React.FC = () => {
       console.error('Reverse geocode error:', error);
       setPickedPlaceName(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
     }
-  };
-
-  // Toggle coordinate picker mode
-  const toggleCoordinatePicker = () => {
-    setShowCoordinatePicker(!showCoordinatePicker);
-    setPickedCoordinates(null);
-    setPickedPlaceName('');
   };
 
   // Map reference component
@@ -397,7 +389,7 @@ const MapPage: React.FC = () => {
     setIsSearching(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ', Bengaluru, India')}&format=json&limit=5&addressdetails=1`
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`
       );
       const data = await response.json();
       setSearchResults(data);
@@ -407,17 +399,6 @@ const MapPage: React.FC = () => {
     } finally {
       setIsSearching(false);
     }
-  };
-
-  const handleSearchSelect = (result: any) => {
-    const lat = parseFloat(result.lat);
-    const lng = parseFloat(result.lon);
-    setHighlightedLocation([lat, lng]);
-    setSearchResults([]);
-    setSearchQuery(result.display_name);
-    
-    // Optionally, you can also set this as picked coordinates
-    setPickedCoordinates([lat, lng]);
   };
 
   // Debounce search
@@ -853,9 +834,7 @@ const MapPage: React.FC = () => {
           title="Viosa AI Assistant"
           aria-label="Viosa AI Assistant"
         >
-          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
+          <span className="text-2xl">🤖</span>
           <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse"></span>
         </button>
         <button

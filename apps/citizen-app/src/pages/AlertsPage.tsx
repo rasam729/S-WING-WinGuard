@@ -118,7 +118,7 @@ const AlertsPage: React.FC = () => {
     return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   };
 
-  const getAlertTitle = (message: string, type: string) => {
+  const getAlertTitle = (_message: string, type: string) => {
     if (type === 'success') return 'Issue Resolved';
     if (type === 'info') return 'Status Update';
     if (type === 'warning') return 'Safety Alert';

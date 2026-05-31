@@ -43,20 +43,20 @@ const generateWaypoints = (
 };
 
 // Calculate route avoiding hazards
-const calculateRouteWithHazardAvoidance = (
+const calculateRouteWithHazardAvoidance = async (
   start: { lat: number; lng: number },
   end: { lat: number; lng: number },
   avoidanceLevel: 'high' | 'medium' | 'low'
-): RoutePoint[] => {
+): Promise<RoutePoint[]> => {
   const baseWaypoints = generateWaypoints(start, end, 15);
   const avoidanceRadius = avoidanceLevel === 'high' ? 0.5 : avoidanceLevel === 'medium' ? 0.3 : 0.1; // km
   
-  const adjustedWaypoints = baseWaypoints.map((point, index) => {
+  const adjustedWaypoints = await Promise.all(baseWaypoints.map(async (point, index) => {
     // Don't adjust start and end points
     if (index === 0 || index === baseWaypoints.length - 1) {
       return {
         ...point,
-        safetyScore: calculateSafetyScore(point, 0.5),
+        safetyScore: await calculateSafetyScore(point, 0.5),
       };
     }
     
@@ -82,7 +82,7 @@ const calculateRouteWithHazardAvoidance = (
       
       return {
         ...adjustedPoint,
-        safetyScore: calculateSafetyScore(adjustedPoint, 0.5),
+        safetyScore: await calculateSafetyScore(adjustedPoint, 0.5),
       };
     }
     
@@ -134,27 +134,27 @@ const countHazardsAlongRoute = (waypoints: RoutePoint[], radiusKm: number = 0.3)
 };
 
 // Generate multiple route options
-export const generateRouteOptions = (
+export const generateRouteOptions = async (
   start: { lat: number; lng: number },
   end: { lat: number; lng: number }
-): RouteOption[] => {
+): Promise<RouteOption[]> => {
   // Calculate direct distance for reference (not used in current implementation)
   // const directDistance = calculateDistance(start, end);
   
   // Safest Route - Maximum hazard avoidance
-  const safestWaypoints = calculateRouteWithHazardAvoidance(start, end, 'high');
+  const safestWaypoints = await calculateRouteWithHazardAvoidance(start, end, 'high');
   const safestDistance = calculateRouteDistance(safestWaypoints);
   const safestSafetyScore = safestWaypoints.reduce((sum, p) => sum + p.safetyScore, 0) / safestWaypoints.length;
   const safestHazards = countHazardsAlongRoute(safestWaypoints);
   
   // Balanced Route - Moderate hazard avoidance
-  const balancedWaypoints = calculateRouteWithHazardAvoidance(start, end, 'medium');
+  const balancedWaypoints = await calculateRouteWithHazardAvoidance(start, end, 'medium');
   const balancedDistance = calculateRouteDistance(balancedWaypoints);
   const balancedSafetyScore = balancedWaypoints.reduce((sum, p) => sum + p.safetyScore, 0) / balancedWaypoints.length;
   const balancedHazards = countHazardsAlongRoute(balancedWaypoints);
   
   // Fastest Route - Minimal hazard avoidance (direct route)
-  const fastestWaypoints = calculateRouteWithHazardAvoidance(start, end, 'low');
+  const fastestWaypoints = await calculateRouteWithHazardAvoidance(start, end, 'low');
   const fastestDistance = calculateRouteDistance(fastestWaypoints);
   const fastestSafetyScore = fastestWaypoints.reduce((sum, p) => sum + p.safetyScore, 0) / fastestWaypoints.length;
   const fastestHazards = countHazardsAlongRoute(fastestWaypoints);

@@ -268,31 +268,6 @@ export default function AnalyticsPage() {
   };
 
   // 5. Safety Score Tracking (line)
-  const safetyScoreData = {
-    labels: months,
-    datasets: [
-      {
-        label: 'Road Safety Score',
-        data: generateMonthlyData(62, timeRange, 1.1),
-        fill: true,
-        backgroundColor: 'rgba(34,197,94,0.15)',
-        borderColor: '#22c55e',
-        borderWidth: 3,
-        tension: 0.4,
-        pointBackgroundColor: '#22c55e',
-        pointRadius: 4
-      },
-      {
-        label: 'Target Score',
-        data: Array(timeRange).fill(85),
-        borderColor: 'rgba(245,158,11,0.6)',
-        borderWidth: 2,
-        borderDash: [8, 4],
-        pointRadius: 0,
-        fill: false
-      }
-    ]
-  };
 
   // 6. Resolution Time by Category (horizontal bar)
   const resolutionTimeData = {

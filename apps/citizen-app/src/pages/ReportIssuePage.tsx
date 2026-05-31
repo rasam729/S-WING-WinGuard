@@ -4,7 +4,7 @@ import EnhancedReportForm from '../components/EnhancedReportForm';
 
 export default function ReportIssuePage() {
   const navigate = useNavigate();
-  const [showForm, setShowForm] = useState(true);
+  const [showForm] = useState(true);
 
   const handleSuccess = () => {
     setTimeout(() => {
