@@ -27,7 +27,7 @@ export default function AllocationModal({ open, defaultAmount, currency = 'USD',
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose}></div>
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-lg z-10 p-6">
         <h3 className="text-lg font-semibold mb-2">Simulated Budget & Allocation</h3>

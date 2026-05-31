@@ -385,6 +385,17 @@ export default function DashboardPage() {
       // POST to backend (auth if available)
       try {
         await fetch('/api/budget/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ issueId: pendingAction?.issueId || null, issueTitle: allocDefaults.title, city: payload.city, country: payload.country, amount: payload.amount, currency: payload.currency }) });
+        
+        // Also patch the report so it appears in the Budgets tab properly
+        const issueIdToPatch = pendingAction?.issueId || payload.issueId;
+        if (issueIdToPatch) {
+          const reportId = typeof issueIdToPatch === 'number' && issueIdToPatch > 10000 ? issueIdToPatch - 10000 : issueIdToPatch;
+          await fetch(`http://localhost:3000/api/reports/${reportId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify({ amount_sanctioned: payload.amount, status: 'In Progress' })
+          });
+        }
       } catch (e) {
         console.warn('Allocation POST failed', e);
       }

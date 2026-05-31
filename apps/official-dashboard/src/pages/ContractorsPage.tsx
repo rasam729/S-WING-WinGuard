@@ -96,8 +96,8 @@ export default function ContractorsPage() {
 
   const augmentedContractors = contractors.map((contractor) => ({
     ...contractor,
-    ...sampleAssignments[contractor.contractor_id],
-    ...dynamicAssignments[String(contractor.contractor_id)]
+    ...(sampleAssignments[contractor.contractor_id] || {}),
+    ...(dynamicAssignments[String(contractor.contractor_id)] || {})
   }));
 
   const filteredContractors = augmentedContractors.filter(contractor =>
