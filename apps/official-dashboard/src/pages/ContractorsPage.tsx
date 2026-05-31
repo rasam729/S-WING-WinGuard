@@ -190,13 +190,13 @@ export default function ContractorsPage() {
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <p className="text-gray-400 text-sm font-medium">Ongoing Projects</p>
             <p className="text-3xl font-bold text-blue-400 mt-2">
-              {contractors.reduce((sum, c) => sum + c.ongoing_projects, 0)}
+              {contractors.reduce((sum, c) => sum + Number(c.ongoing_projects || 0), 0)}
             </p>
           </div>
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
             <p className="text-gray-400 text-sm font-medium">Completed Projects</p>
             <p className="text-3xl font-bold text-purple-400 mt-2">
-              {contractors.reduce((sum, c) => sum + c.completed_projects, 0)}
+              {contractors.reduce((sum, c) => sum + Number(c.completed_projects || 0), 0)}
             </p>
           </div>
         </div>
@@ -232,7 +232,7 @@ export default function ContractorsPage() {
                   <span className="text-gray-400 w-24">Rating:</span>
                   <div className="flex items-center">
                     <span className="text-yellow-400 mr-1">⭐</span>
-                    <span className="text-white font-medium">{contractor.rating.toFixed(1)}</span>
+                    <span className="text-white font-medium">{Number(contractor.rating || 0).toFixed(1)}</span>
                   </div>
                 </div>
               </div>
@@ -240,11 +240,11 @@ export default function ContractorsPage() {
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="bg-gray-700 rounded-lg p-3 text-center">
                   <p className="text-gray-400 text-xs">Ongoing</p>
-                  <p className="text-xl font-bold text-blue-400">{contractor.ongoing_projects}</p>
+                  <p className="text-xl font-bold text-blue-400">{contractor.ongoing_projects || 0}</p>
                 </div>
                 <div className="bg-gray-700 rounded-lg p-3 text-center">
                   <p className="text-gray-400 text-xs">Completed</p>
-                  <p className="text-xl font-bold text-green-400">{contractor.completed_projects}</p>
+                  <p className="text-xl font-bold text-green-400">{contractor.completed_projects || 0}</p>
                 </div>
               </div>
 

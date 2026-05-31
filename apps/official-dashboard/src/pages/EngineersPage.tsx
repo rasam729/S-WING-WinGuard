@@ -98,9 +98,9 @@ export default function EngineersPage() {
 
   const availableEngineers = engineers.filter(e => e.availability === 'available');
   void engineers.filter(e => e.availability === 'busy'); // busyEngineers: reserved for future display
-  const totalLoad = engineers.reduce((sum, e) => sum + e.current_load, 0);
+  const totalLoad = engineers.reduce((sum, e) => sum + Number(e.current_load || 0), 0);
   const avgResolutionRate = engineers.length > 0
-    ? (engineers.reduce((sum, e) => sum + e.resolution_rate, 0) / engineers.length).toFixed(1)
+    ? (engineers.reduce((sum, e) => sum + Number(e.resolution_rate || 0), 0) / engineers.length).toFixed(1)
     : 0;
 
   return (
@@ -156,7 +156,7 @@ export default function EngineersPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {engineers.map((engineer) => {
             const utilizationRate = engineer.max_concurrent_issues > 0
-              ? ((engineer.current_load / engineer.max_concurrent_issues) * 100).toFixed(0)
+              ? ((Number(engineer.current_load || 0) / Number(engineer.max_concurrent_issues || 1)) * 100).toFixed(0)
               : 0;
 
             return (
@@ -197,7 +197,7 @@ export default function EngineersPage() {
                     <span className="text-gray-400 w-32">Rating:</span>
                     <div className="flex items-center">
                       <span className="text-yellow-400 mr-1">⭐</span>
-                      <span className="text-white font-medium">{engineer.rating.toFixed(1)}</span>
+                      <span className="text-white font-medium">{Number(engineer.rating || 0).toFixed(1)}</span>
                     </div>
                   </div>
                 </div>
@@ -225,7 +225,7 @@ export default function EngineersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-700 rounded-lg p-3 text-center">
                     <p className="text-gray-400 text-xs">Resolution Rate</p>
-                    <p className="text-xl font-bold text-green-400">{engineer.resolution_rate.toFixed(0)}%</p>
+                    <p className="text-xl font-bold text-green-400">{Number(engineer.resolution_rate || 0).toFixed(0)}%</p>
                   </div>
                   <div className="bg-gray-700 rounded-lg p-3 text-center">
                     <p className="text-gray-400 text-xs">Avg Time (hrs)</p>
