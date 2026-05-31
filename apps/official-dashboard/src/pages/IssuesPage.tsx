@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useIssuesStore } from '../store/issuesStore';
+import { convertCurrency } from '../data/globalData';
+import AllocationModal from '../components/AllocationModal';
+import ContractorAssignModal from '../components/ContractorAssignModal';
 
 interface CitizenReport {
   report_id: number;
@@ -20,9 +23,14 @@ export default function IssuesPage() {
   const { logout } = useAuthStore();
   const { issues, updateIssueStatus } = useIssuesStore();
   
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | number | null>(null);
   const [citizenReports, setCitizenReports] = useState<CitizenReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
+  const [allocModalOpen, setAllocModalOpen] = useState(false);
+  const [allocDefaults, setAllocDefaults] = useState<{ amount: number; currency: string; title?: string; timeline?: string }>({ amount: 0, currency: 'USD', title: '', timeline: '' });
+  const [pendingResolve, setPendingResolve] = useState<{ issueId: string | number; action?: 'resolve' | 'allocate' } | null>(null);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assigningIssue, setAssigningIssue] = useState<string | number | null>(null);
 
   // Fetch citizen reports from API
   useEffect(() => {
@@ -43,56 +51,80 @@ export default function IssuesPage() {
     }
   };
 
-  const handleToggleResolved = async (issueId: number, currentStatus: 'critical' | 'in_progress' | 'resolved') => {
+  const handleToggleResolved = async (issueId: string | number, currentStatus: 'critical' | 'in_progress' | 'resolved') => {
     setUpdatingId(issueId);
     try {
-      const token = useAuthStore.getState().token;
-      
+      // If already resolved, unresolve locally
       if (currentStatus === 'resolved') {
-        // Unresolve - just update local state
         updateIssueStatus(issueId, 'critical');
-      } else {
-        // Resolve - call backend API
-        const response = await fetch(`http://localhost:3000/api/reports/${issueId}/resolve`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          updateIssueStatus(issueId, 'resolved');
-          
-          // Show success notification
-          alert('✅ Report marked as resolved!\n\n' +
-                '📢 Citizen has been notified via:\n' +
-                '• Browser notification\n' +
-                '• In-app alert\n' +
-                '• Stats page update\n\n' +
-                'The report will disappear from the map.');
-          
-          // Emit WebSocket event (if socket is available)
-          if (window.socket) {
-            window.socket.emit('report-resolved', {
-              reportId: issueId,
-              category: data.data?.category || 'Report',
-              userId: data.data?.user_id
-            });
-          }
-        } else {
-          throw new Error('Failed to resolve report');
-        }
+        setUpdatingId(null);
+        return;
       }
+
+      // Before resolving, show simulated budget and allow custom allocation
+      const issue = issues.find(i => i.id === issueId || i.id === Number(issueId));
+      let defaultAmt = 0;
+      let defaultCur = 'USD';
+      if (issue && issue.estimatedCost) {
+        defaultAmt = issue.estimatedCost;
+        defaultCur = issue.currency || 'USD';
+      }
+      const simulatedUSD = Math.round(convertCurrency(defaultAmt || 1000, defaultCur, 'USD'));
+
+
+      // Open allocation modal instead
+      setAllocDefaults({ amount: simulatedUSD, currency: 'USD', title: issue?.description || `Issue ${issueId}`, timeline: '' });
+      setPendingResolve({ issueId, action: 'resolve' });
+      setAllocModalOpen(true);
+      setUpdatingId(null);
+      return;
     } catch (error) {
       console.error('Error updating issue:', error);
       alert('❌ Failed to update status. Please try again.');
     } finally {
-      setUpdatingId(null);
+      // updatingId cleared by modal flow
     }
   };
 
-  const handleUpdateStatus = async (issueId: number, newStatus: 'critical' | 'in_progress' | 'resolved') => {
+  const handleAllocateResolve = async (payload: { amount: number; currency: string; note?: string; city?: string; country?: string }) => {
+    if (!pendingResolve) return;
+    setUpdatingId(pendingResolve.issueId);
+    const token = useAuthStore.getState().token;
+    try {
+      // persist local
+      const key = 'wg_budget_allocations';
+      const raw = localStorage.getItem(key);
+      const arr = raw ? JSON.parse(raw) : [];
+      arr.unshift({ allocation_id: `local-${Date.now()}`, issueId: pendingResolve.issueId, issueTitle: allocDefaults.title, city: payload.city || '', country: payload.country || '', amount: payload.amount, currency: payload.currency || 'USD', createdAt: new Date().toISOString() });
+      localStorage.setItem(key, JSON.stringify(arr));
+
+      // POST allocation
+      try { await fetch('/api/budget/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ issueId: pendingResolve.issueId, issueTitle: allocDefaults.title, city: payload.city, country: payload.country, amount: payload.amount, currency: payload.currency }) }); } catch (e) { console.warn('Allocation POST failed', e); }
+
+      // If this allocation was triggered as part of a resolve flow, then resolve via backend
+      if (pendingResolve.action === 'resolve') {
+        const response = await fetch(`http://localhost:3000/api/reports/${pendingResolve.issueId}/resolve`, { method: 'PATCH', headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+        if (response.ok) {
+          const data = await response.json();
+          updateIssueStatus(pendingResolve.issueId, 'resolved');
+          alert('✅ Report marked as resolved!\nCitizen notified.');
+          const socketWindow = window as any;
+      if (socketWindow.socket) socketWindow.socket.emit('report-resolved', { reportId: pendingResolve.issueId, category: data.data?.category || 'Report', userId: data.data?.user_id });
+        } else {
+          throw new Error('Failed to resolve report');
+        }
+      }
+    } catch (e) {
+      console.error('Error resolving after allocation', e);
+      alert('❌ Failed to resolve report after allocation.');
+    } finally {
+      setUpdatingId(null);
+      setPendingResolve(null);
+      setAllocModalOpen(false);
+    }
+  };
+
+  const handleUpdateStatus = async (issueId: string | number, newStatus: 'critical' | 'in_progress' | 'resolved') => {
     setUpdatingId(issueId);
     try {
       updateIssueStatus(issueId, newStatus);
@@ -143,6 +175,30 @@ export default function IssuesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {allocModalOpen && (
+        <AllocationModal
+          open={allocModalOpen}
+          defaultAmount={allocDefaults.amount}
+          currency={allocDefaults.currency}
+          defaultTitle={allocDefaults.title}
+          timelineDefault={allocDefaults.timeline}
+          showTimeline={Boolean(allocDefaults.timeline)}
+          onClose={() => { setAllocModalOpen(false); setPendingResolve(null); }}
+          onAllocate={handleAllocateResolve}
+        />
+      )}
+      {assignModalOpen && (
+        <ContractorAssignModal
+          open={assignModalOpen}
+          issueId={assigningIssue}
+          onClose={() => { setAssignModalOpen(false); setAssigningIssue(null); }}
+          onAssigned={(c) => {
+            alert(`Assigned to ${c?.company_name || c?.contractor_name}`);
+            // refresh lists
+            fetchCitizenReports();
+          }}
+        />
+      )}
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col py-6 h-screen w-64 bg-white border-r border-gray-200 fixed left-0 top-0 z-50">
         <div className="px-6 mb-8">
@@ -285,6 +341,16 @@ export default function IssuesPage() {
                               </svg>
                               <span className="font-medium">{issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)}</span>
                             </span>
+                            {issue.roadType && (
+                              <span className="flex items-center gap-1 text-sm text-gray-500">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                                <span className="font-medium">{issue.roadType}</span>
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1 text-sm text-gray-500">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                              <span className="font-medium">{(issue as any).contractorName || 'Unassigned'}</span>
+                            </span>
                             <span className="flex items-center gap-1">
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
@@ -324,6 +390,52 @@ export default function IssuesPage() {
                               <span>{issue.status === 'resolved' ? 'Mark as Unresolved' : 'Mark as Resolved'}</span>
                             </>
                           )}
+                        </button>
+                        {/* Assign Contractor Button */}
+                        <button
+                          onClick={() => { setAssigningIssue(issue.id); setAssignModalOpen(true); }}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-md flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                          Assign Contractor
+                        </button>
+                        
+                        {/* Allocate Budget for Citizen Report */}
+                        <button
+                          onClick={() => {
+                            const defaultAmt = Math.max(500, issue.severity * 200);
+                            const simulatedUSD = Math.round(convertCurrency(defaultAmt, 'USD', 'USD'));
+                            setAllocDefaults({ amount: simulatedUSD, currency: 'USD', title: issue.description, timeline: '' });
+                            setPendingResolve({ issueId: issue.id, action: 'allocate' });
+                            setAllocModalOpen(true);
+                          }}
+                          className="px-6 py-3 bg-yellow-500 text-white rounded-xl text-sm font-bold hover:bg-yellow-600 transition-all shadow-md flex items-center gap-2"
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                          </svg>
+                          Allocate Budget
+                        </button>
+                        {/* Allocate Budget Button */}
+                        <button
+                          onClick={() => {
+                            let defaultAmt = 0;
+                            let defaultCur = 'USD';
+                            if ((issue as any) && (issue as any).estimatedCost) {
+                              defaultAmt = (issue as any).estimatedCost;
+                              defaultCur = (issue as any).currency || 'USD';
+                            }
+                            const simulatedUSD = Math.round(convertCurrency(defaultAmt || 1000, defaultCur, 'USD'));
+                            setAllocDefaults({ amount: simulatedUSD, currency: 'USD', title: (issue as any)?.description || `Issue ${issue.id}`, timeline: '' });
+                            setPendingResolve({ issueId: issue.id, action: 'allocate' });
+                            setAllocModalOpen(true);
+                          }}
+                          className="px-4 py-3 bg-yellow-500 text-white rounded-xl text-sm font-bold hover:bg-yellow-600 transition-all shadow-md flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                          </svg>
+                          Allocate Budget
                         </button>
 
                         {/* Status Update Dropdown */}

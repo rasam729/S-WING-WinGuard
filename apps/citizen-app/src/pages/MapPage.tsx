@@ -322,8 +322,11 @@ const MapPage: React.FC = () => {
     if (type === 'hospital') return '#ec4899'; // pink
     // Police booths are always blue
     if (type === 'police_booth') return '#3b82f6'; // blue
-    // Other issues based on status
-    if (status === 'Resolved') return '#22c55e'; // green
+    // Other issues based on status (decided by city official)
+    if (status === 'Resolved' || status === 'resolved') return '#22c55e'; // green ✓ resolved
+    if (status === 'In Progress' || status === 'in_progress') return '#3b82f6'; // blue → in progress
+    if (status === 'Critical' || status === 'critical') return '#ef4444'; // red → critical/pending
+    // Fallback: base on severity if status unclear
     if (severity >= 8) return '#ef4444'; // red
     if (severity >= 5) return '#f59e0b'; // orange
     return '#eab308'; // yellow
@@ -805,6 +808,12 @@ const MapPage: React.FC = () => {
                     {report.status}
                   </span>
                 </p>
+                <p className="text-xs mt-2">
+                  <strong>Road Type:</strong> <span className="font-medium">{(report as any).roadType || 'Unknown'}</span>
+                </p>
+                <p className="text-xs mt-1">
+                  <strong>Contractor:</strong> <span className="font-medium">{(report as any).contractorName || 'Unassigned'}</span>
+                </p>
                 {report.estimated_fix_date && (
                   <p className="text-xs mt-2 text-blue-600 font-medium">
                     Est. Fix: {new Date(report.estimated_fix_date).toLocaleDateString()}
@@ -1025,10 +1034,7 @@ const MapPage: React.FC = () => {
               <div className="w-4 h-4 rounded-full bg-blue-500 shadow-sm flex-shrink-0"></div>
               <span className="text-sm text-gray-700 font-medium mobile-text-xs">👮 Police Booth</span>
             </div>
-            <div className="flex items-center gap-3 mobile-gap-2">
-              <div className="w-4 h-4 rounded-full bg-pink-500 shadow-sm flex-shrink-0"></div>
-              <span className="text-sm text-gray-700 font-medium mobile-text-xs">🏥 Hospital</span>
-            </div>
+            
           </div>
         </div>
       </div>

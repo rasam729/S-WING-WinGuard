@@ -14,6 +14,13 @@ export function setReportsSocketIO(ioInstance: SocketIOServer) {
   io = ioInstance;
 }
 
+function inferRoadType(category: string, severity: number, description = '') {
+  const text = `${category || ''} ${description || ''}`.toLowerCase();
+  if (/highway|motorway|autobahn|i-|expressway|nh\b/.test(text) || severity >= 9) return 'NH';
+  if (/state|state highway|sh\b/.test(text) || severity >= 6) return 'SH';
+  return 'MDR';
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -95,7 +102,8 @@ router.post('/', authenticate, upload.single('photo'), async (req: any, res: Res
       gpsExtracted: gpsExtracted === 'true'
     } : null;
 
-    // Insert report into database using PostGIS
+    // Infer road type (not persisted if DB column missing) and Insert report into database using PostGIS
+    const road_type = inferRoadType(category, parseInt(severity || '5'), description);
     const result = await pool.query(
       `INSERT INTO reports (
         category, 
@@ -152,7 +160,8 @@ router.post('/', authenticate, upload.single('photo'), async (req: any, res: Res
           latitude: parseFloat(latitude),
           longitude: parseFloat(longitude),
           created_at: report.created_at,
-          status: 'Report Received'
+          status: 'Report Received',
+          road_type
         });
 
         // Broadcast new notification to updating clients
@@ -174,6 +183,7 @@ router.post('/', authenticate, upload.single('photo'), async (req: any, res: Res
         category: report.category,
         severity: report.severity,
         description: report.description,
+        roadType: road_type,
         createdAt: report.created_at,
         gpsExtracted: gpsExtracted === 'true'
       }
@@ -197,6 +207,7 @@ router.get('/all', async (req: Request, res: Response) => {
         r.category,
         r.severity,
         r.description,
+        r.road_type,
         r.report_status,
         r.status,
         r.photo_url,

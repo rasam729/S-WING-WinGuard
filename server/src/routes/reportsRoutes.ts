@@ -6,6 +6,13 @@
 import { Router, Request, Response } from 'express';
 import pool from '../config/postgres';
 
+function inferRoadType(category: string, severity: number, description = '', lat?: number, lon?: number) {
+  const text = `${category || ''} ${description || ''}`.toLowerCase();
+  if (/highway|motorway|autobahn|i-|expressway|nh\b/.test(text) || severity >= 9) return 'NH';
+  if (/state|state highway|sh\b/.test(text) || severity >= 6) return 'SH';
+  return 'MDR';
+}
+
 const router = Router();
 
 // Socket.io instance will be set by server
@@ -30,17 +37,20 @@ router.post('/reports', async (req: Request, res: Response) => {
       });
     }
     
+    // Infer road type if not provided
+    const road_type = inferRoadType(category, Number(severity || 5), description, Number(latitude), Number(longitude));
+
     const query = `
-      INSERT INTO reports (category, severity, description, location, status, created_at)
-      VALUES ($1, $2, $3, ST_GeogFromText('POINT(' || $5 || ' ' || $4 || ')'), 'Report Received', NOW())
+      INSERT INTO reports (category, severity, description, location, status, road_type, created_at)
+      VALUES ($1, $2, $3, ST_GeogFromText('POINT(' || $5 || ' ' || $4 || ')'), 'Report Received', $6, NOW())
       RETURNING 
         report_id, category, severity, description,
         ST_X(location::geometry) as longitude,
         ST_Y(location::geometry) as latitude,
-        status, created_at, dept_id
+        status, road_type, created_at, dept_id
     `;
     
-    const result = await pool.query(query, [category, severity || 5, description || '', latitude, longitude]);
+    const result = await pool.query(query, [category, severity || 5, description || '', latitude, longitude, road_type]);
     const newReport = result.rows[0];
     
     if (io) {

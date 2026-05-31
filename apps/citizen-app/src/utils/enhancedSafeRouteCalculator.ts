@@ -88,9 +88,9 @@ const calculateRouteWithHazardAvoidance = async (
     
     return {
       ...point,
-      safetyScore: calculateSafetyScore(point, 0.5),
+      safetyScore: await calculateSafetyScore(point, 0.5),
     };
-  });
+  }));
   
   return adjustedWaypoints;
 };

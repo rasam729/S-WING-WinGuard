@@ -488,6 +488,21 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
+            {/* Road type breakdown */}
+            <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+              <h3 className="text-lg font-bold text-white mb-4">🛣️ Issues by Road Type</h3>
+              <div className="flex gap-4 flex-wrap">
+                {Object.entries(issues.reduce((acc:any, i:any) => {
+                  const k = i.roadType || 'Unknown'; acc[k] = (acc[k] || 0) + 1; return acc;
+                }, {})).map(([k,v]) => (
+                  <div key={k} className="bg-gray-800/60 text-white px-4 py-2 rounded-lg">
+                    <div className="text-sm text-gray-300">{k}</div>
+                    <div className="text-2xl font-bold mt-1">{String(v)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Ward-wise bar */}
             <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
               <h3 className="text-lg font-bold text-white mb-4">🗺️ Ward-wise Incidents (Bengaluru)</h3>

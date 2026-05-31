@@ -561,7 +561,7 @@ export default function SimulationsPage() {
             {/* Linked Map Issues */}
             {linkedIssues.length > 0 && (
               <div className="bg-white rounded-xl border border-orange-200 p-4">
-                <h2 className="font-bold text-gray-900 mb-3 text-sm uppercase tracking-wider text-orange-700">
+                <h2 className="font-bold mb-3 text-sm uppercase tracking-wider text-orange-700">
                   🔗 Linked Map Issues
                 </h2>
                 <div className="space-y-2">

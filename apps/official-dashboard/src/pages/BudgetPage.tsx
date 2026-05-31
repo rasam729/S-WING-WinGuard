@@ -249,6 +249,58 @@ export default function BudgetPage() {
     }
   };
 
+  // Merge in any local allocations created via issue workflows
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('wg_budget_allocations');
+      if (raw) {
+        const localAlloc = JSON.parse(raw) as any[];
+        if (localAlloc.length > 0) {
+          // Convert to BudgetAllocation-like shape for display
+          const converted = localAlloc.map(a => ({
+            allocation_id: a.allocation_id || `local-${Date.now()}`,
+            fiscal_year: selectedFiscalYear,
+            source_type: 'Local Official',
+            source_name: a.issueTitle || 'Local Allocation',
+            sanction_number: '',
+            sanction_date: a.createdAt || new Date().toISOString(),
+            amount: a.amount || a.amount_usd || 0,
+            purpose: `Allocation for ${a.issueTitle || a.issueId}`
+          }));
+          // Attempt to POST local allocations to backend then merge returned or fall back to local
+          (async () => {
+            try {
+              const posted: any[] = [];
+              for (const a of localAlloc) {
+                try {
+                  const res = await fetch('/api/budget/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ issueId: a.issueId, issueTitle: a.issueTitle, city: a.city, country: a.country, amount: a.amount, currency: a.currency || 'USD' }) });
+                  if (res.ok) {
+                    const j = await res.json();
+                    if (j.success && j.data) posted.push(j.data);
+                  }
+                } catch (e) {
+                  console.warn('Allocation POST failed for', a, e);
+                }
+              }
+              if (posted.length > 0) {
+                setAllocations(prev => [...posted.map(p => ({ allocation_id: p.allocation_id || `remote-${Date.now()}`, fiscal_year: selectedFiscalYear, source_type: p.source_type || 'Local Official', source_name: p.source_name || p.issueTitle || 'Local Allocation', sanction_number: p.sanction_number || '', sanction_date: p.sanction_date || new Date().toISOString(), amount: p.amount || 0, purpose: p.purpose || `Allocation for ${p.issueTitle || p.issueId}` })), ...prev]);
+                // clear local cache
+                localStorage.removeItem('wg_budget_allocations');
+              } else {
+                setAllocations(prev => [...converted, ...prev]);
+              }
+            } catch (e) {
+              console.warn('Failed to push local allocations', e);
+              setAllocations(prev => [...converted, ...prev]);
+            }
+          })();
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load local allocations', e);
+    }
+  }, [selectedFiscalYear]);
+
   const handleLogout = () => { logout(); navigate('/login'); };
 
   // ── Derived numbers ──────────────────────────────────────────────────────

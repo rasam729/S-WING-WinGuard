@@ -13,6 +13,10 @@ interface Contractor {
   completed_projects: number;
   ongoing_projects: number;
   status: string;
+  assigned_issue?: string;
+  route_info?: string;
+  last_relay_date?: string;
+  fix_timeline?: string;
 }
 
 export default function ContractorsPage() {
@@ -50,9 +54,22 @@ export default function ContractorsPage() {
     }
   };
 
-  const filteredContractors = contractors.filter(contractor =>
+  const sampleAssignments: Record<string, { assigned_issue: string; route_info: string; last_relay_date: string; fix_timeline: string }> = {
+    'CTR-001': { assigned_issue: 'Highway pothole cluster on I-95 Exit 42', route_info: 'Route: I-95 North', last_relay_date: '2026-05-10', fix_timeline: '2 weeks' },
+    'CTR-002': { assigned_issue: 'Streetlight outage at Shibuya Crossing', route_info: 'Route: Shibuya-Ku road grid', last_relay_date: '2026-05-08', fix_timeline: '5 days' },
+    'CTR-003': { assigned_issue: 'Drainage cleanup at Orchard Road', route_info: 'Route: Orchard Road drainage corridor', last_relay_date: '2026-05-12', fix_timeline: '72 hours' }
+  };
+
+  const augmentedContractors = contractors.map((contractor) => ({
+    ...contractor,
+    ...sampleAssignments[contractor.contractor_id]
+  }));
+
+  const filteredContractors = augmentedContractors.filter(contractor =>
     contractor.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contractor.contact_person?.toLowerCase().includes(searchTerm.toLowerCase())
+    contractor.contact_person?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    contractor.assigned_issue?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    contractor.route_info?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleLogout = () => {
@@ -193,6 +210,35 @@ export default function ContractorsPage() {
                   <p className="text-xl font-bold text-green-400">{contractor.completed_projects}</p>
                 </div>
               </div>
+
+              {(contractor.assigned_issue || contractor.route_info || contractor.last_relay_date || contractor.fix_timeline) && (
+                <div className="bg-gray-700 rounded-xl p-4 mb-4 space-y-2 border border-gray-600">
+                  {contractor.assigned_issue && (
+                    <div className="text-sm">
+                      <p className="text-gray-400">Assigned Issue</p>
+                      <p className="text-white font-medium">{contractor.assigned_issue}</p>
+                    </div>
+                  )}
+                  {contractor.route_info && (
+                    <div className="text-sm">
+                      <p className="text-gray-400">Assigned Route</p>
+                      <p className="text-white font-medium">{contractor.route_info}</p>
+                    </div>
+                  )}
+                  {contractor.last_relay_date && (
+                    <div className="text-sm">
+                      <p className="text-gray-400">Last Relay Date</p>
+                      <p className="text-white font-medium">{contractor.last_relay_date}</p>
+                    </div>
+                  )}
+                  {contractor.fix_timeline && (
+                    <div className="text-sm">
+                      <p className="text-gray-400">Fix Timeline</p>
+                      <p className="text-white font-medium">{contractor.fix_timeline}</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {contractor.specialization && contractor.specialization.length > 0 && (
                 <div className="mb-4">
