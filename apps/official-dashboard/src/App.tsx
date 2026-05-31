@@ -40,7 +40,7 @@ function App() {
           <Route path="/road-info" element={<RoadInfoPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
       </Routes>
       <ViosaChatbot />
     </Router>

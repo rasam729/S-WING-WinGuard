@@ -3,8 +3,16 @@ import { pool } from '../config/postgres';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { Server as SocketIOServer } from 'socket.io';
 
 const router = Router();
+
+// Socket.IO instance (will be set by server.ts)
+let io: SocketIOServer | null = null;
+
+export function setReportsSocketIO(ioInstance: SocketIOServer) {
+  io = ioInstance;
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -122,6 +130,41 @@ router.post('/', authenticate, upload.single('photo'), async (req: any, res: Res
     );
 
     const report = result.rows[0];
+
+    // Create a notification for officials
+    try {
+      const notifMessage = `New road safety report submitted: ${report.category} - ${report.description.substring(0, 50)}${report.description.length > 50 ? '...' : ''}`;
+      const notifResult = await pool.query(
+        `INSERT INTO notifications (user_id, report_id, message, type, sent_at)
+         VALUES (NULL, $1, $2, 'info', CURRENT_TIMESTAMP)
+         RETURNING *`,
+        [report.report_id, notifMessage]
+      );
+      
+      // Emit websocket events for real-time notification
+      if (io) {
+        // Broadcast new report to all officials
+        io.emit('new-report', {
+          report_id: report.report_id,
+          category: report.category,
+          severity: report.severity,
+          description: report.description,
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude),
+          created_at: report.created_at,
+          status: 'Report Received'
+        });
+
+        // Broadcast new notification to updating clients
+        io.emit('new-notification', {
+          notification: notifResult.rows[0],
+          message: 'New notification received'
+        });
+        console.log('📡 Broadcasted new-report and new-notification for report:', report.report_id);
+      }
+    } catch (notifErr) {
+      console.error('Error creating official notification:', notifErr);
+    }
 
     res.status(201).json({
       success: true,
@@ -296,6 +339,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
         r.user_experience,
         r.critical_score,
         r.created_at,
+        r.user_id,
         ST_X(r.location::geometry) as longitude,
         ST_Y(r.location::geometry) as latitude,
         u.full_name as reporter_name,
@@ -322,6 +366,196 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch report',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// PATCH /api/reports/:id/status - Update report status (for officials)
+router.patch('/:id/status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status is required'
+      });
+    }
+
+    // Get the report details including user_id before updating
+    const reportResult = await pool.query(
+      'SELECT user_id, category, description FROM reports WHERE report_id = $1',
+      [id]
+    );
+
+    if (reportResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Report not found'
+      });
+    }
+
+    const report = reportResult.rows[0];
+
+    // Update the report status
+    const result = await pool.query(
+      `UPDATE reports 
+       SET status = $1, report_status = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE report_id = $2
+       RETURNING report_id, status, updated_at`,
+      [status, id]
+    );
+
+    // If status is updated, send notification to the citizen who reported it
+    if (report.user_id) {
+      try {
+        let message = '';
+        let type = 'info';
+        
+        if (status === 'Resolved') {
+          message = `Great news! The ${report.category} issue you reported has been resolved. Thank you for helping make your community safer!`;
+          type = 'success';
+        } else if (status === 'In Progress') {
+          message = `Update: The ${report.category} issue you reported is now being fixed. We will update you once it's resolved.`;
+          type = 'info';
+        } else {
+          message = `Update: The status of your report for ${report.category} has been changed to "${status}".`;
+          type = 'info';
+        }
+
+        const notifResult = await pool.query(
+          `INSERT INTO notifications (user_id, report_id, message, type, sent_at)
+           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+           RETURNING *`,
+          [report.user_id, id, message, type]
+        );
+
+        // Emit new-notification socket event so the citizen PWA gets it in real-time
+        if (io) {
+          io.emit('new-notification', {
+            notification: notifResult.rows[0],
+            message: 'New notification received'
+          });
+        }
+      } catch (notifError) {
+        console.error('Error sending notification:', notifError);
+        // Don't fail the request if notification fails
+      }
+    }
+
+    // Emit Socket.IO event for real-time updates
+    if (io) {
+      io.emit('report-status-changed', {
+        reportId: id,
+        status: status,
+        userId: report.user_id
+      });
+      
+      if (status === 'Resolved') {
+        io.emit('report-resolved', {
+          reportId: id,
+          userId: report.user_id
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Report status updated successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating report status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update report status',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// PATCH /api/reports/:id/resolve - Mark report as resolved
+router.patch('/:id/resolve', authenticate, async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    const officialId = req.user.userId;
+
+    // Update report status
+    const result = await pool.query(
+      `UPDATE reports 
+       SET status = 'Resolved', 
+           resolved_at = CURRENT_TIMESTAMP,
+           resolved_by = $1
+       WHERE report_id = $2
+       RETURNING report_id, category, user_id, description,
+                 ST_X(location::geometry) as longitude,
+                 ST_Y(location::geometry) as latitude`,
+      [officialId, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Report not found'
+      });
+    }
+
+    const report = result.rows[0];
+
+    // Create notification for the citizen who reported it
+    if (report.user_id) {
+      try {
+        const message = `Great news! The ${report.category} issue you reported has been resolved. Thank you for helping make your community safer!`;
+        const notifResult = await pool.query(
+          `INSERT INTO notifications (user_id, report_id, message, type, sent_at)
+           VALUES ($1, $2, $3, 'success', CURRENT_TIMESTAMP)
+           RETURNING *`,
+          [report.user_id, id, message]
+        );
+
+        // Emit WebSocket events for real-time notifications
+        if (io) {
+          // Notify the specific citizen
+          io.emit('report-resolved', {
+            reportId: report.report_id,
+            userId: report.user_id,
+            category: report.category,
+            message: message
+          });
+
+          // Broadcast notification update
+          io.emit('new-notification', {
+            notification: notifResult.rows[0],
+            userId: report.user_id,
+            message: 'New notification received'
+          });
+
+          // Broadcast status change to update maps
+          io.emit('report-status-changed', {
+            reportId: id,
+            status: 'Resolved',
+            userId: report.user_id
+          });
+
+          console.log('📡 Broadcasted report-resolved event for report:', report.report_id);
+        }
+      } catch (notifError) {
+        console.error('Error creating notification:', notifError);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Report marked as resolved',
+      data: report
+    });
+  } catch (error) {
+    console.error('Error resolving report:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to resolve report',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

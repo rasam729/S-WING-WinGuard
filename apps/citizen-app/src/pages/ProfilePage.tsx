@@ -1,18 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+
+interface Report {
+  report_id: number;
+  category: string;
+  severity: number;
+  description: string;
+  status: string;
+  created_at: string;
+  latitude: number;
+  longitude: number;
+  photo_url?: string;
+}
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   
   const [isEditing, setIsEditing] = useState(false);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loadingReports, setLoadingReports] = useState(true);
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
     email: user?.email || '',
     phone: user?.phone || '',
     location: 'Bengaluru, Karnataka'
   });
+
+  // Fetch user's reports
+  useEffect(() => {
+    fetchUserReports();
+  }, []);
+
+  const fetchUserReports = async () => {
+    try {
+      setLoadingReports(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/reports', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success && data.data && data.data.reports) {
+        setReports(data.data.reports);
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes('resolved')) return 'bg-green-100 text-green-800 border-green-200';
+    if (statusLower.includes('progress')) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    return 'bg-red-100 text-red-800 border-red-200';
+  };
+
+  const getStatusIcon = (status: string) => {
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes('resolved')) return '✅';
+    if (statusLower.includes('progress')) return '🔄';
+    return '⏳';
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   const handleSave = () => {
     // TODO: API call to update profile
@@ -185,6 +249,83 @@ const ProfilePage: React.FC = () => {
               <span className="material-symbols-outlined text-gray-400 flex-shrink-0">chevron_right</span>
             </button>
           </div>
+        </div>
+
+        {/* Submission History */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border-2 border-gray-200 mobile-rounded mobile-compact">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2 font-display mobile-text-xl mobile-text-wrap">
+            <span className="material-symbols-outlined text-purple-600 flex-shrink-0">history</span>
+            Submission History
+          </h3>
+
+          {loadingReports ? (
+            <div className="text-center py-8">
+              <div className="inline-block w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-gray-600 mt-4 font-semibold">Loading your reports...</p>
+            </div>
+          ) : reports.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-xl mobile-rounded">
+              <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">description</span>
+              <p className="text-gray-600 font-semibold mobile-text-sm">No reports submitted yet</p>
+              <button
+                onClick={() => navigate('/report')}
+                className="mt-4 px-6 py-2 bg-gradient-to-r from-cyan-500 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all mobile-px-4 mobile-py-2 mobile-text-sm"
+              >
+                Submit Your First Report
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4 mobile-space-y-3">
+              {reports.map((report) => (
+                <div
+                  key={report.report_id}
+                  className="border-2 border-gray-200 rounded-xl p-4 hover:border-cyan-300 hover:shadow-md transition-all mobile-p-3 mobile-rounded"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3 mobile-gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-gray-900 text-lg flex items-center gap-2 mobile-text-base mobile-text-wrap">
+                        <span>{report.category}</span>
+                      </h4>
+                      <p className="text-sm text-gray-600 mt-1 mobile-text-xs mobile-text-wrap">{report.description}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold border-2 whitespace-nowrap flex items-center gap-1 flex-shrink-0 ${getStatusColor(report.status)}`}>
+                      <span>{getStatusIcon(report.status)}</span>
+                      <span className="mobile-hidden">{report.status}</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-200 mobile-text-wrap">
+                    <div className="flex items-center gap-4 mobile-gap-2 mobile-stack">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm flex-shrink-0">calendar_today</span>
+                        <span className="mobile-text-xs">{formatDate(report.created_at)}</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm flex-shrink-0">warning</span>
+                        <span className="mobile-text-xs">Severity: {report.severity}/10</span>
+                      </span>
+                    </div>
+                    {report.status.toLowerCase().includes('resolved') && (
+                      <span className="text-green-600 font-bold flex items-center gap-1 mobile-text-xs">
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        <span>Fixed!</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {report.photo_url && (
+                    <div className="mt-3">
+                      <img
+                        src={`http://localhost:3000${report.photo_url}`}
+                        alt="Report"
+                        className="w-full h-32 object-cover rounded-lg mobile-rounded"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Logout Button */}

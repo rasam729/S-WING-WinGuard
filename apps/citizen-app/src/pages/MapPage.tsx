@@ -57,6 +57,7 @@ const MapPage: React.FC = () => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
+  const [infrastructure, setInfrastructure] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showNavigationEngine, setShowNavigationEngine] = useState(false);
@@ -188,6 +189,12 @@ const MapPage: React.FC = () => {
   useEffect(() => {
     fetchReports();
     fetchNotifications();
+    fetchInfrastructure();
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
     
     // Connect to Socket.io for real-time updates
     const socket = io('http://localhost:3000');
@@ -201,6 +208,68 @@ const MapPage: React.FC = () => {
       console.log('Report updated:', data);
       fetchReports();
       fetchNotifications();
+      
+      // Show alert if a report was resolved
+      if (data.status === 'Resolved' || data.status === 'resolved') {
+        // Fetch notifications to show the resolved alert
+        setTimeout(() => {
+          fetchNotifications();
+          setShowNotifications(true);
+        }, 500);
+      }
+    });
+
+    socket.on('infrastructure-added', (data: any) => {
+      console.log('New infrastructure added:', data);
+      fetchInfrastructure();
+    });
+
+    socket.on('report-status-changed', (data: any) => {
+      console.log('Report status changed:', data);
+      fetchReports();
+      fetchNotifications();
+      
+      // If resolved, show notification panel
+      if (data.status === 'Resolved') {
+        setTimeout(() => {
+          fetchNotifications();
+          setShowNotifications(true);
+        }, 500);
+      }
+    });
+
+    // Listen for report-resolved events (real-time notification)
+    socket.on('report-resolved', (data: any) => {
+      console.log('🎉 Report resolved:', data);
+      
+      // Refresh reports to remove resolved one from map
+      fetchReports();
+      fetchNotifications();
+      
+      // Show browser notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Issue Resolved! ✅', {
+          body: data.message || `Your ${data.category} report has been fixed!`,
+          icon: '/WinGuard_Logo.png',
+          badge: '/WinGuard_Logo.png',
+          tag: `report-${data.reportId}`,
+          requireInteraction: true
+        });
+      }
+      
+      // Show in-app notification panel
+      setTimeout(() => {
+        setShowNotifications(true);
+      }, 500);
+      
+      // Show success toast
+      alert(`✅ Great news! Your ${data.category} report has been resolved by officials!`);
+    });
+
+    // Listen for new notifications
+    socket.on('new-notification', (data: any) => {
+      console.log('📬 New notification:', data);
+      fetchNotifications();
     });
     
     return () => {
@@ -213,10 +282,26 @@ const MapPage: React.FC = () => {
       const response = await fetch('http://localhost:3000/api/map/map-data');
       const data = await response.json();
       if (data.success) {
-        setReports(data.data);
+        // Filter out resolved issues - only show active issues
+        const activeReports = data.data.filter((report: Report) => 
+          report.status !== 'Resolved' && report.status !== 'resolved'
+        );
+        setReports(activeReports);
       }
     } catch (error) {
       console.error('Error fetching reports:', error);
+    }
+  };
+
+  const fetchInfrastructure = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/infrastructure');
+      const data = await response.json();
+      if (data.success) {
+        setInfrastructure(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching infrastructure:', error);
     }
   };
 
@@ -724,6 +809,60 @@ const MapPage: React.FC = () => {
                   <p className="text-xs mt-2 text-blue-600 font-medium">
                     Est. Fix: {new Date(report.estimated_fix_date).toLocaleDateString()}
                   </p>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
+        {/* Infrastructure (Police Booths, Streetlights, Hospitals) */}
+        {infrastructure.map((infra) => (
+          <Marker
+            key={infra.infra_id}
+            position={[infra.latitude, infra.longitude]}
+            icon={L.divIcon({
+              className: 'custom-marker',
+              html: `<div style="background: ${
+                infra.type === 'police_booth' ? '#3b82f6' : 
+                infra.type === 'hospital' ? '#ec4899' : 
+                infra.type === 'streetlight' ? '#eab308' : '#6b7280'
+              }; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 10px rgba(0,0,0,0.4); display: flex; align-items: center; justify-center; font-size: 20px;">${
+                infra.type === 'police_booth' ? '👮' : 
+                infra.type === 'hospital' ? '🏥' : 
+                infra.type === 'streetlight' ? '💡' : '🏗️'
+              }</div>`,
+              iconSize: [36, 36],
+              iconAnchor: [18, 18],
+            })}
+          >
+            <Popup>
+              <div className="p-2">
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <span>{
+                    infra.type === 'police_booth' ? '👮' : 
+                    infra.type === 'hospital' ? '🏥' : 
+                    infra.type === 'streetlight' ? '💡' : '🏗️'
+                  }</span>
+                  {infra.type === 'police_booth' ? 'Police Booth' : 
+                   infra.type === 'hospital' ? 'Hospital' : 
+                   infra.type === 'streetlight' ? 'Streetlight' : infra.type}
+                </h3>
+                <p className="text-xs mt-2">
+                  <span className={`px-2 py-1 rounded-full font-medium ${
+                    infra.status === 'functional' ? 'bg-green-100 text-green-800' :
+                    infra.status === 'broken' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {infra.status}
+                  </span>
+                </p>
+                {infra.installed_date && (
+                  <p className="text-xs mt-2 text-gray-600">
+                    Installed: {new Date(infra.installed_date).toLocaleDateString()}
+                  </p>
+                )}
+                {infra.notes && (
+                  <p className="text-xs mt-1 text-gray-500">{infra.notes}</p>
                 )}
               </div>
             </Popup>

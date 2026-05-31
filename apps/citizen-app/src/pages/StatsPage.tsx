@@ -235,16 +235,39 @@ const StatsPage: React.FC = () => {
         if (cats.length > 0) setCategoryData(cats);
 
         // ── Recent activity ────────────────────────────────────────────────
-        const activities: RecentActivityItem[] = reports.slice(0, 4).map((report) => ({
-          id: report.report_id,
-          action: 'Report Submitted',
-          description: `${report.category} – ${report.description.substring(0, 50)}${
-            report.description.length > 50 ? '…' : ''
-          }`,
-          date: getTimeAgo(new Date(report.created_at)),
-          status: report.status === 'Resolved' ? 'resolved' : 'pending',
+        const activities: RecentActivityItem[] = [];
+        reports.forEach((report) => {
+          // 1. Submit activity
+          activities.push({
+            id: report.report_id * 2,
+            action: 'Report Submitted 📋',
+            description: `${report.category} issue reported at ${report.landmark || 'location'}.`,
+            date: report.created_at,
+            status: 'pending',
+          });
+
+          // 2. If resolved, add resolution milestone with green badge
+          if (report.status === 'Resolved') {
+            activities.push({
+              id: report.report_id * 2 + 1,
+              action: 'Issue Resolved ✅',
+              description: `Great news! The ${report.category} issue has been fixed by officials. Thank you for making your community safer!`,
+              date: report.resolved_at || report.updated_at || report.created_at,
+              status: 'resolved',
+            });
+          }
+        });
+
+        // Sort by date descending
+        activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        // Format dates into human-readable relative time strings after sorting
+        const formattedActivities: RecentActivityItem[] = activities.slice(0, 10).map(act => ({
+          ...act,
+          date: getTimeAgo(new Date(act.date)),
         }));
-        setRecentActivity(activities);
+
+        setRecentActivity(formattedActivities);
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -754,7 +777,7 @@ const StatsPage: React.FC = () => {
                       <div
                         className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                           activity.status === 'resolved'
-                            ? 'bg-teal-500/20'
+                            ? 'bg-gradient-to-br from-green-500 to-emerald-600'
                             : activity.status === 'pending'
                             ? 'bg-amber-500/20'
                             : activity.status === 'saved'
@@ -765,13 +788,14 @@ const StatsPage: React.FC = () => {
                         <span
                           className={`material-symbols-outlined ${
                             activity.status === 'resolved'
-                              ? 'text-teal-400'
+                              ? 'text-white'
                               : activity.status === 'pending'
                               ? 'text-amber-400'
                               : activity.status === 'saved'
                               ? 'text-cyan-400'
                               : 'text-purple-400'
                           }`}
+                          style={activity.status === 'resolved' ? { fontVariationSettings: "'FILL' 1" } : {}}
                         >
                           {activity.status === 'resolved'
                             ? 'check_circle'
@@ -783,7 +807,14 @@ const StatsPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-white">{activity.action}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-bold text-white">{activity.action}</p>
+                          {activity.status === 'resolved' && (
+                            <span className="px-2 py-0.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-bold rounded-full">
+                              FIXED
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-400">{activity.description}</p>
                         <p className="text-xs text-gray-500 mt-1">{activity.date}</p>
                       </div>
