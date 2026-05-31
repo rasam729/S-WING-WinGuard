@@ -83,7 +83,7 @@ export default function ContractorAssignModal({ open, issueId, onClose, onAssign
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black bg-opacity-30">
       <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
         <h3 className="text-lg font-bold mb-3">Assign Contractor</h3>
         <p className="text-sm text-gray-600 mb-4">Select a contractor to assign to this issue.</p>

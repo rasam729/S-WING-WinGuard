@@ -40,10 +40,6 @@ export default function MaintenancePage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'schedules' | 'repairs' | 'upcoming' | 'overdue'>('schedules');
 
-  useEffect(() => {
-    fetchMaintenanceData();
-  }, []);
-
   const fetchMaintenanceData = async () => {
     try {
       setLoading(true);
@@ -72,6 +68,10 @@ export default function MaintenancePage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchMaintenanceData();
+  }, []);
 
   const handleLogout = () => {
     logout();

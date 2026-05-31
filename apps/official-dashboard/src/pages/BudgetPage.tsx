@@ -82,7 +82,7 @@ const genData = (base: number, n: number, trend = 0) =>
   });
 
 // Static AI-derived issue expenses linked to map issues
-const ISSUE_EXPENSES: IssueExpense[] = [
+const DEFAULT_ISSUE_EXPENSES: IssueExpense[] = [
   {
     id: 'ie-001', issueType: 'Pothole Repair', location: 'Koramangala 5th Block',
     severity: 9, status: 'completed',
@@ -184,6 +184,7 @@ export default function BudgetPage() {
 
   const [allocations, setAllocations] = useState<BudgetAllocation[]>([]);
   const [categories, setCategories] = useState<BudgetCategory[]>([]);
+  const [issueExpenses, setIssueExpenses] = useState<IssueExpense[]>(DEFAULT_ISSUE_EXPENSES);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'issues' | 'feasibility' | 'allocations' | 'transparency'>('overview');
   const [selectedFiscalYear, setSelectedFiscalYear] = useState('2025-26');
@@ -241,6 +242,33 @@ export default function BudgetPage() {
       if (catRes.status === 'fulfilled') {
         const d = await catRes.value.json();
         if (d.success) setCategories(d.data || []);
+      }
+      
+      const reportsRes = await fetch('http://localhost:3000/api/reports', { headers: { Authorization: `Bearer ${token}` } });
+      if (reportsRes.ok) {
+        const d = await reportsRes.json();
+        if (d.success && d.data) {
+          const dynamicExpenses = d.data
+            .filter((r: any) => r.amount_sanctioned || r.contractor_name)
+            .map((r: any) => ({
+              id: `rep-${r.report_id}`,
+              issueType: r.category,
+              location: r.address || 'Unknown Location',
+              severity: r.severity,
+              status: r.status === 'In Progress' ? 'in_progress' : r.status.toLowerCase(),
+              aiCostEstimate: r.amount_sanctioned || 50000,
+              sanctionedAmount: r.amount_sanctioned || 0,
+              actualSpent: r.amount_spent || 0,
+              feasibilityScore: 85,
+              roiMultiplier: 2.5,
+              crimeReductionPct: 5,
+              profitLoss: 0,
+              createdAt: r.created_at,
+              contractor_name: r.contractor_name
+            }));
+            
+          setIssueExpenses([...DEFAULT_ISSUE_EXPENSES, ...dynamicExpenses]);
+        }
       }
     } catch (e) {
       console.error('Budget fetch error:', e);
@@ -305,7 +333,7 @@ export default function BudgetPage() {
 
   // ── Derived numbers ──────────────────────────────────────────────────────
 
-  const allIssueExpenses = ISSUE_EXPENSES;
+  const allIssueExpenses = issueExpenses;
   const filteredExpenses = statusFilter === 'all'
     ? allIssueExpenses
     : allIssueExpenses.filter(e => e.status === statusFilter);
@@ -707,7 +735,7 @@ export default function BudgetPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-800/60">
                     <tr>
-                      {['Issue Type', 'Location', 'Sev.', 'Status', 'AI Cost Est.', 'Sanctioned', 'Spent', 'Savings', 'Feasibility', 'ROI', 'Crime ↓', 'Actions'].map(h => (
+                      {['Issue Type', 'Location', 'Sev.', 'Status', 'AI Cost Est.', 'Sanctioned', 'Spent', 'Savings', 'Contractor', 'Feasibility', 'ROI', 'Crime ↓', 'Actions'].map(h => (
                         <th key={h} className="text-left py-3 px-3 text-gray-400 font-semibold whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -731,6 +759,7 @@ export default function BudgetPage() {
                           <td className={`py-3 px-3 font-semibold whitespace-nowrap ${savings > 0 ? 'text-green-400' : savings < 0 ? 'text-red-400' : 'text-gray-500'}`}>
                             {exp.actualSpent > 0 ? (savings > 0 ? `+${fmtCur(savings)}` : fmtCur(savings)) : '—'}
                           </td>
+                          <td className="py-4 px-4 text-gray-300">{(exp as any).contractor_name || 'N/A'}</td>
                           <td className={`py-3 px-3 font-bold ${feasColor(exp.feasibilityScore)}`}>{exp.feasibilityScore}%</td>
                           <td className="py-3 px-3 text-teal-400 font-bold whitespace-nowrap">{exp.roiMultiplier}x</td>
                           <td className="py-3 px-3 text-purple-400 whitespace-nowrap">{exp.crimeReductionPct > 0 ? `-${exp.crimeReductionPct}%` : '—'}</td>

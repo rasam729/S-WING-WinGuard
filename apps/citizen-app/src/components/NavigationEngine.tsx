@@ -63,7 +63,7 @@ const NavigationEngine: React.FC<NavigationEngineProps> = ({
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-          query + ', Bengaluru, India'
+          query
         )}&format=json&limit=5&addressdetails=1`
       );
       const data = await response.json();

@@ -26,10 +26,7 @@ export default function ContractorsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    fetchContractors();
-  }, [filter]);
+  const [dynamicAssignments, setDynamicAssignments] = useState<Record<string, any>>({});
 
   const fetchContractors = async () => {
     try {
@@ -54,6 +51,43 @@ export default function ContractorsPage() {
     }
   };
 
+  const fetchReportsForAssignments = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/reports', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const assignments: Record<string, any> = {};
+        if (data.data) {
+          data.data.forEach((r: any) => {
+            if (r.contractor_id || String(r.contractor_id) !== 'undefined') {
+              // Note: Contractor IDs might be stored differently depending on the schema, try to match it
+              const cId = String(r.contractor_id);
+              if (cId && cId !== 'undefined' && cId !== 'null') {
+                assignments[cId] = {
+                  assigned_issue: `${r.category} at ${r.address || 'Unknown Location'}`,
+                  route_info: `Sanctioned: ₹${r.amount_sanctioned || 0}`,
+                  last_relay_date: new Date(r.created_at).toISOString().split('T')[0],
+                  fix_timeline: r.status
+                };
+              }
+            }
+          });
+        }
+        setDynamicAssignments(assignments);
+      }
+    } catch (e) {
+      console.warn('Failed to fetch reports for assignments', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchContractors();
+    fetchReportsForAssignments();
+  }, [filter]);
+
   const sampleAssignments: Record<string, { assigned_issue: string; route_info: string; last_relay_date: string; fix_timeline: string }> = {
     'CTR-001': { assigned_issue: 'Highway pothole cluster on I-95 Exit 42', route_info: 'Route: I-95 North', last_relay_date: '2026-05-10', fix_timeline: '2 weeks' },
     'CTR-002': { assigned_issue: 'Streetlight outage at Shibuya Crossing', route_info: 'Route: Shibuya-Ku road grid', last_relay_date: '2026-05-08', fix_timeline: '5 days' },
@@ -62,7 +96,8 @@ export default function ContractorsPage() {
 
   const augmentedContractors = contractors.map((contractor) => ({
     ...contractor,
-    ...sampleAssignments[contractor.contractor_id]
+    ...sampleAssignments[contractor.contractor_id],
+    ...dynamicAssignments[String(contractor.contractor_id)]
   }));
 
   const filteredContractors = augmentedContractors.filter(contractor =>

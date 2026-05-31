@@ -539,6 +539,11 @@ const MapPage: React.FC = () => {
       setDestination([lastPoint.lat, lastPoint.lng]);
     }
     
+    if (route.path.length > 0 && mapRef.current) {
+      const bounds = L.latLngBounds(route.path.map((p: any) => [p.lat, p.lng]));
+      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+    }
+    
     setShowNavigationEngine(false);
   };
 
